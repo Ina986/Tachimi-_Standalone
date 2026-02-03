@@ -319,6 +319,110 @@ npm run tauri dev  # 同上
 npm run tauri build --debug  # デバッグビルド
 ```
 
+## GitHub リポジトリ & 自動更新
+
+### リポジトリ情報
+
+- **URL**: https://github.com/Ina986/Tachimi-_Standalone
+- **GitHub Actions**: タグ push で自動ビルド＆リリース作成
+
+### 署名キー（重要！）
+
+自動更新機能には署名が必要。キーファイルは以下に保存:
+
+```
+.tauri/
+├── tachimi.key      # 秘密鍵（絶対にコミットしない！.gitignore済み）
+└── tachimi.key.pub  # 公開鍵（tauri.conf.json に設定済み）
+```
+
+**秘密鍵の値**（GitHub Secrets に設定済み）:
+```
+dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWduIGVuY3J5cHRlZCBzZWNyZXQga2V5ClJXUlRZMEl5VTNTRENYZU8wVW9obm5sTWtOWENvNTVTYkZXNnVjMXZHbnRISXdYczdyY0FBQkFBQUFBQUFBQUFBQUlBQUFBQTZlYWRicHZnT2k1d0ZpSlpEemdMMnl1Nm1sTTdKZ3pNRDUwQ0thTFhvQzBxQTFmeHhVZ3l6ZmJoM2xTTnUvNjE4NVJFdnhQOWd1OUduWlRaQVlWSVJnUERZcEdKRERtdGdLZW1yOFp3Y3hIVW9TVjB3RnF5Y3pETXc0RzgrcVo3RlNaZDI5OGhzZE09Cg==
+```
+
+### GitHub Secrets 設定
+
+リポジトリの **Settings → Secrets and variables → Actions** に以下を設定済み:
+
+| Secret名 | 説明 |
+|----------|------|
+| `TAURI_SIGNING_PRIVATE_KEY` | 上記の秘密鍵の値 |
+
+### 新バージョンのリリース手順
+
+#### 1. コードを修正する
+
+#### 2. バージョン番号を更新
+`src-tauri/tauri.conf.json` の `version` を変更:
+```json
+{
+  "version": "1.0.1"  // ← ここを更新
+}
+```
+
+#### 3. コミット & プッシュ
+```bash
+git add -A
+git commit -m "v1.0.1: 変更内容の説明"
+git push origin main
+```
+
+#### 4. タグを作成してプッシュ
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+#### 5. GitHub Actions を確認
+https://github.com/Ina986/Tachimi-_Standalone/actions でビルド状況を確認
+
+#### 6. リリースを公開
+https://github.com/Ina986/Tachimi-_Standalone/releases でドラフトを確認し、「Publish release」をクリック
+
+### 自動更新の仕組み
+
+1. ユーザーがアプリの設定画面（鍵アイコン）で「更新を確認」をクリック
+2. アプリが `latest.json` を取得して新バージョンがあるか確認
+3. 新バージョンがあれば「ダウンロードしてインストール」ボタンを表示
+4. クリックすると自動でダウンロード＆インストール＆再起動
+
+### 設定ファイル
+
+**tauri.conf.json の updater 設定**:
+```json
+{
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Ina986/Tachimi-_Standalone/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJFM0FFMDlCNkU5REU2RTkKUldUcDVwMXVtK0E2THZiaDNsU051LzYxODVSRXZ4UDlndTlHblpUWkFZVklSZ1BEWXBHSkREbXQK"
+    }
+  },
+  "bundle": {
+    "createUpdaterArtifacts": true
+  }
+}
+```
+
+### トラブルシューティング
+
+**ビルドが失敗する場合:**
+1. GitHub Actions のログを確認
+2. `TAURI_SIGNING_PRIVATE_KEY` が正しく設定されているか確認
+
+**latest.json が生成されない場合:**
+- `tauri.conf.json` に `"createUpdaterArtifacts": true` があるか確認
+- ワークフローに `includeUpdaterJson: true` があるか確認
+
+**署名キーを紛失した場合:**
+新しいキーを生成する必要がある（既存ユーザーは手動再インストールが必要）:
+```bash
+npx tauri signer generate --ci -p "" -w .tauri/tachimi.key
+```
+→ 新しい公開鍵を `tauri.conf.json` に設定し、秘密鍵を GitHub Secrets に再設定
+
 ## 出力パス規則
 
 - JPEG: `outputFolder/jpg/` サブフォルダ
