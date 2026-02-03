@@ -1,0 +1,154 @@
+/**
+ * タチミ - CSS変数定義
+ * 印刷工房デザインシステム
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    /* ========================================
+       印刷工房カラーパレット
+       ======================================== */
+
+    /* 背景 - より深みのあるダーク */
+    --bg-deep: #0a0a0d;
+    --bg: #131316;
+    --bg2: #1c1c21;
+    --bg3: #26262d;
+    --bg-surface: #2a2a32;
+
+    /* テキスト */
+    --text: #e8e8ec;
+    --text2: #a0a0a8;
+    --text3: #606068;
+
+    /* インク青 - より豊かで深い青 */
+    --accent: #1565c0;
+    --accent2: #2196f3;
+    --accent-glow: rgba(33, 150, 243, 0.4);
+
+    /* 朱色 - 伝統的な印刷の赤 */
+    --vermillion: #c41e3a;
+    --vermillion-deep: #8b0000;
+    --vermillion-glow: rgba(196, 30, 58, 0.3);
+
+    /* 真鍮アクセント - 工業的な金属感 */
+    --brass: #b8860b;
+    --brass-light: #d4a64a;
+
+    /* メタリック */
+    --metal-light: #e8e8ec;
+    --metal-mid: #a0a0a8;
+    --metal-dark: #606068;
+
+    /* ボーダー */
+    --border: #3a3a42;
+    --border-light: rgba(255, 255, 255, 0.08);
+
+    /* ステータス */
+    --success: #2e7d32;
+    --error: #c62828;
+    --warning: #f9a825;
+
+    /* ========================================
+       レイアウト
+       ======================================== */
+    --section-gap: 10px;
+    --section-padding: 12px;
+
+    /* スペーシングスケール */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --space-2xl: 32px;
+
+    /* ボーダー半径 */
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --radius-round: 50%;
+
+    /* ========================================
+       タイポグラフィ
+       ======================================== */
+    --font-display: "Shippori Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --font-ui: "Noto Sans JP", "Yu Gothic UI", "Meiryo UI", sans-serif;
+    --font-mono: "JetBrains Mono", "Consolas", "SF Mono", monospace;
+
+    /* フォントサイズ */
+    --text-xs: 9px;
+    --text-sm: 10px;
+    --text-base: 12px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-xl: 18px;
+    --text-2xl: 24px;
+
+    /* フォントウェイト */
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+
+    /* ========================================
+       シャドウ
+       ======================================== */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+    /* インセットシャドウ */
+    --shadow-inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-inset-lg: inset 0 4px 8px rgba(0, 0, 0, 0.5);
+
+    /* ハイライト */
+    --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    /* ========================================
+       トランジション
+       ======================================== */
+    --transition-fast: 0.1s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    --transition-bounce: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* ========================================
+       コンポーネント固有トークン
+       ======================================== */
+
+    /* ボタン */
+    --btn-padding: var(--space-sm) var(--space-md);
+    --btn-radius: var(--radius-sm);
+    --btn-height: 32px;
+
+    /* インプット */
+    --input-padding: var(--space-sm);
+    --input-radius: var(--radius-sm);
+    --input-height: 28px;
+
+    /* カード */
+    --card-padding: var(--space-md);
+    --card-radius: var(--radius-md);
+
+    /* モーダル */
+    --modal-padding: var(--space-xl);
+    --modal-radius: var(--radius-lg);
+
+    /* ========================================
+       テクスチャ
+       ======================================== */
+    --noise-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+
+    /* ========================================
+       Z-Index スケール
+       ======================================== */
+    --z-base: 0;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 1000;
+    --z-tooltip: 1100;
+    --z-overlay: 9999;
+}

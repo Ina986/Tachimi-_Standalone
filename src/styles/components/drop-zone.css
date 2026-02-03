@@ -1,0 +1,227 @@
+/**
+ * タチミ - ドロップエリアコンポーネント
+ * ファイル/フォルダのドラッグ＆ドロップ領域
+ */
+
+.drop-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    flex-shrink: 0;
+    padding: 20px;
+    margin-bottom: 10px;
+    background:
+        radial-gradient(ellipse at center, rgba(21, 101, 192, 0.03) 0%, transparent 70%),
+        linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 100%);
+    border: 2px solid var(--bg3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 110px;
+    box-shadow:
+        inset 0 4px 12px rgba(0, 0, 0, 0.5),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.02),
+        0 1px 0 rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+}
+
+/* コーナーブラケット装飾 */
+.drop-area::before,
+.drop-area::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--metal-dark);
+    transition: all 0.3s ease;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.drop-area::before {
+    top: 10px;
+    left: 10px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.drop-area::after {
+    bottom: 10px;
+    right: 10px;
+    border-left: none;
+    border-top: none;
+}
+
+/* ホバー状態 */
+.drop-area:hover {
+    border-color: var(--accent);
+    background:
+        radial-gradient(ellipse at center, rgba(21, 101, 192, 0.08) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    box-shadow:
+        inset 0 4px 12px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(33, 150, 243, 0.1);
+}
+
+.drop-area:hover::before,
+.drop-area:hover::after {
+    border-color: var(--accent2);
+    opacity: 1;
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ドラッグオーバー状態 */
+.drop-area.drag-over {
+    border-color: var(--accent2);
+    border-style: solid;
+    background:
+        radial-gradient(ellipse at center, rgba(33, 150, 243, 0.15) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 20px rgba(33, 150, 243, 0.1),
+            0 0 15px rgba(33, 150, 243, 0.1);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 30px rgba(33, 150, 243, 0.2),
+            0 0 25px rgba(33, 150, 243, 0.15);
+    }
+}
+
+/* アイコン */
+.drop-area-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    transition: all 0.3s ease;
+}
+
+.drop-area:hover .drop-area-icon {
+    transform: translateY(-3px);
+    opacity: 0.9;
+    filter: drop-shadow(0 4px 8px rgba(33, 150, 243, 0.3));
+}
+
+/* テキスト */
+.drop-area-text {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    letter-spacing: 0.03em;
+}
+
+.drop-area-sub {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+}
+
+/* ドロップヒント（ドラッグオーバー時に表示） */
+.drop-area-hint {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(33, 150, 243, 0.2);
+    backdrop-filter: blur(2px);
+    border-radius: 6px;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent2);
+    pointer-events: none;
+    text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.drop-area.drag-over .drop-area-hint {
+    display: flex;
+}
+
+/* ファイル読み込み済み状態 */
+.drop-area.has-files {
+    border-style: solid;
+    border-color: var(--accent);
+    background:
+        radial-gradient(ellipse at center, rgba(33, 150, 243, 0.06) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    box-shadow:
+        inset 0 2px 8px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(33, 150, 243, 0.1);
+}
+
+.drop-area.has-files::before,
+.drop-area.has-files::after {
+    border-color: var(--accent);
+    opacity: 0.8;
+}
+
+.drop-area.has-files .drop-area-icon {
+    opacity: 1;
+}
+
+.drop-area.has-files .drop-area-text {
+    color: var(--accent2);
+}
+
+/* 空状態 */
+.drop-area-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* 読み込み済み状態 */
+.drop-area-loaded {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.drop-area-file-icon {
+    font-size: 20px;
+    color: var(--success);
+}
+
+.drop-area-file-info {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    text-align: left;
+    line-height: 1.5;
+}
+
+/* クリアボタン */
+.btn-clear {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg3);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-clear:hover {
+    background: var(--error);
+    color: white;
+}

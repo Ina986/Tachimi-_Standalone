@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tachimi",
+  "version": "1.0.0",
+  "identifier": "com.tachimi.app",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/YOUR_USERNAME/tachimi_standalone/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJFM0FFMDlCNkU5REU2RTkKUldUcDVwMXVtK0E2THZiaDNsU051LzYxODVSRXZ4UDlndTlHblpUWkFZVklSZ1BEWXBHSkREbXQK"
+    }
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Tachimi",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$TEMP/**", "$LOCALAPPDATA/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": ["Japanese"],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

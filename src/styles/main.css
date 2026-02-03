@@ -1,0 +1,18 @@
+/**
+ * タチミ - メインスタイルシート
+ * コンポーネントをインポート
+ *
+ * 注意: 現在は既存のstyles.cssを使用中
+ * 段階的にコンポーネントを分割していく予定
+ */
+
+/* ユーティリティ */
+@import url('./utilities/variables.css');
+
+/* コンポーネント（段階的に移行） */
+/* @import url('./components/drop-zone.css'); */
+/* @import url('./components/output-cards.css'); */
+/* @import url('./components/tachikiri-settings.css'); */
+/* @import url('./components/crop-mode.css'); */
+/* @import url('./components/processing-overlay.css'); */
+/* @import url('./components/modals.css'); */
