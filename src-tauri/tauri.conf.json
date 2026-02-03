@@ -9,7 +9,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/YOUR_USERNAME/tachimi_standalone/releases/latest/download/latest.json"
+        "https://github.com/Ina986/Tachimi-_Standalone/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJFM0FFMDlCNkU5REU2RTkKUldUcDVwMXVtK0E2THZiaDNsU051LzYxODVSRXZ4UDlndTlHblpUWkFZVklSZ1BEWXBHSkREbXQK"
     }
