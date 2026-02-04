@@ -448,7 +448,7 @@ npm run tauri build --debug  # デバッグビルド
 
 ```toml
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", features = ["protocol-asset", "devtools"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
@@ -556,11 +556,34 @@ npx tauri signer generate -w .tauri/tachimi.key
 4. GitHub Actions が自動でビルド・リリース作成
 5. 上記4ファイルがリリースに追加されることを確認
 
+### セキュリティ設定（tauri.conf.json）
+
+```json
+{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' https://github.com https://api.github.com https://*.githubusercontent.com; img-src 'self' asset: http://asset.localhost https://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$TEMP/**", "$LOCALAPPDATA/**", "$DESKTOP/**", "$DOCUMENT/**", "$HOME/**", "$DOWNLOAD/**", "G:/**"]
+      }
+    }
+  }
+}
+```
+
+**CSP設定のポイント:**
+- `connect-src`: アップデーター用にGitHub関連URLを許可
+- `img-src`: `http://asset.localhost`と`https://asset.localhost`の両方を許可（Tauri内部プロトコル）
+
+**assetProtocol.scope**: ファイル読み込み可能なディレクトリを指定
+
 ### トラブルシューティング
 
 - **`latest.json` が生成されない**: `createUpdaterArtifacts: true` を確認
 - **署名エラー**: GitHub Secrets の秘密鍵とパスワードを確認
 - **署名キー不一致エラー**: 鍵を変更した場合、旧バージョンからは手動更新が必要
+- **CSPエラー（画像読み込み失敗）**: `img-src`に`http://asset.localhost`があるか確認
 
 ### フロントエンド実装
 
@@ -586,6 +609,8 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] ノンブルサイズ拡張（xlarge追加）
 - [x] 機能アンロック（パスワード保護、640:909比率固定）
 - [x] 自動更新機能（GitHub Releases + tauri-plugin-updater）
+- [x] リリースビルドでDevTools有効化（devtools feature flag）
+- [x] CSP/assetProtocol設定の最適化（v1.0.15）
 
 ## 今後の改善候補
 
