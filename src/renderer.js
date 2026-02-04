@@ -1711,8 +1711,40 @@ function setupEvents() {
     updateLockIcon();
     updateJsonRegisterButtonVisibility();
 
+    // バージョン表示を更新
+    updateVersionDisplay();
+
     // 起動時の自動アップデートチェック
     checkForUpdateOnStartup();
+}
+
+/**
+ * Tauriからバージョンを取得して表示を更新
+ */
+async function updateVersionDisplay() {
+    try {
+        // Tauri v2のapp APIからバージョンを取得
+        if (window.__TAURI__?.app?.getVersion) {
+            const version = await window.__TAURI__.app.getVersion();
+            const versionText = `v${version}`;
+
+            // 各バージョン表示要素を更新
+            const currentVersionEl = $('currentVersion');
+            if (currentVersionEl) {
+                currentVersionEl.textContent = versionText;
+            }
+
+            // フッターのバージョン表示も更新
+            const versionInfoEl = document.querySelector('.version-info');
+            if (versionInfoEl) {
+                versionInfoEl.textContent = `タチミ Standalone ${versionText}`;
+            }
+
+            console.log('バージョン表示を更新:', versionText);
+        }
+    } catch (e) {
+        console.warn('バージョン取得に失敗:', e);
+    }
 }
 
 /**
