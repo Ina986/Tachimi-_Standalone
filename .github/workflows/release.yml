@@ -57,5 +57,5 @@ jobs:
             既存のバージョンがインストールされている場合は、自動更新機能でもアップデートできます。
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
           args: ${{ matrix.args }}
+          updaterJsonPreferNsis: true

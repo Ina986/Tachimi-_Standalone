@@ -11,7 +11,7 @@
         <header class="header">
             <h1>タチミ</h1>
             <span class="badge">Standalone</span>
-            <!-- 機�EアンロチE��用鍵アイコン�E�隠し�Eタン風�E�E-->
+            <!-- 機能アンロック用鍵アイコン（隠しボタン風） -->
             <span id="btnFeatureLock" class="feature-lock-icon">
                 <svg class="lock-icon lock-closed" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
@@ -20,67 +20,67 @@
                     <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/>
                 </svg>
             </span>
-            <button id="btnResetSettings" class="btn-reset-settings" title="設定を初期状態に戻ぁE>リセチE��</button>
+            <button id="btnResetSettings" class="btn-reset-settings" title="設定を初期状態に戻す">リセット</button>
         </header>
 
         <main class="main main-horizontal">
-            <!-- 左カラム: 設宁E-->
+            <!-- 左カラム: 設定 -->
             <div class="main-left">
-                <!-- ドロチE�Eエリア -->
+                <!-- ドロップエリア -->
                 <div class="drop-area" id="dropZone">
                     <div class="drop-area-empty" id="dropAreaEmpty">
                         <div class="drop-area-icon">📁</div>
-                        <div class="drop-area-text">ファイル/フォルダをドロチE�E</div>
+                        <div class="drop-area-text">ファイル/フォルダをドロップ</div>
                     </div>
                     <div class="drop-area-loaded" id="dropAreaLoaded" style="display:none;">
-                        <div class="drop-area-file-icon">✁E/div>
-                        <div id="fileInfo" class="drop-area-file-info">未選抁E/div>
-                        <button id="btnClearFiles" class="btn-clear" title="クリア">ÁE/button>
+                        <div class="drop-area-file-icon">✓</div>
+                        <div id="fileInfo" class="drop-area-file-info">未選択</div>
+                        <button id="btnClearFiles" class="btn-clear" title="クリア">×</button>
                     </div>
-                    <div class="drop-area-hint">ここにドロチE�E</div>
+                    <div class="drop-area-hint">ここにドロップ</div>
                 </div>
 
-                <!-- 出力設宁E-->
+                <!-- 出力設定 -->
                 <section class="section section-compact">
-                    <h2>出力設宁E/h2>
+                    <h2>出力設定</h2>
                     <div class="output-settings">
                         <div class="output-path-row">
                             <div class="output-path-display" id="outputPathDisplay" title="">
-                                <span class="output-path-label">出力�E</span>
-                                <span class="output-path-value" id="outputInfo">未選抁E/span>
+                                <span class="output-path-label">出力先</span>
+                                <span class="output-path-value" id="outputInfo">未選択</span>
                             </div>
                             <div class="output-path-actions">
-                                <button id="btnSelectOutput" class="btn-icon" title="フォルダを選抁E>📂</button>
-                                <button id="btnResetOutput" class="btn-icon btn-icon-subtle" title="チE��ォルトに戻ぁE>↺</button>
+                                <button id="btnSelectOutput" class="btn-icon" title="フォルダを選択">📂</button>
+                                <button id="btnResetOutput" class="btn-icon btn-icon-subtle" title="デフォルトに戻す">↺</button>
                             </div>
                         </div>
                         <div class="output-name-row">
-                            <span class="output-name-label">ファイル吁E/span>
-                            <input type="text" id="outputName" value="出劁E class="output-name-input" placeholder="出力ファイル吁E>
+                            <span class="output-name-label">ファイル名</span>
+                            <input type="text" id="outputName" value="出力" class="output-name-input" placeholder="出力ファイル名">
                             <span class="output-name-ext">.pdf</span>
                         </div>
                     </div>
                 </section>
 
-                <!-- タチキリ処琁E-->
+                <!-- タチキリ処理 -->
                 <section class="section section-compact">
-                    <h2>タチキリ処琁E/h2>
+                    <h2>タチキリ処理</h2>
                     <div id="tachikiriCards" class="tachikiri-grid-compact">
                         <div class="tachikiri-card-sm" data-value="none">
                             <div class="tachi-icon tachi-icon-none"></div>
-                            <span>なぁE/span>
+                            <span>なし</span>
                         </div>
                         <div class="tachikiri-card-sm" data-value="crop">
                             <div class="tachi-icon tachi-icon-crop"></div>
-                            <span>刁E��</span>
+                            <span>切抜</span>
                         </div>
                         <div class="tachikiri-card-sm" data-value="crop_and_stroke">
                             <div class="tachi-icon tachi-icon-crop-stroke"></div>
-                            <span>刁E緁E/span>
+                            <span>切+線</span>
                         </div>
                         <div class="tachikiri-card-sm" data-value="stroke_only">
                             <div class="tachi-icon tachi-icon-stroke"></div>
-                            <span>線�Eみ</span>
+                            <span>線のみ</span>
                         </div>
                         <div class="tachikiri-card-sm selected" data-value="fill_white">
                             <div class="tachi-icon tachi-icon-fill"></div>
@@ -88,75 +88,75 @@
                         </div>
                         <div class="tachikiri-card-sm" data-value="fill_and_stroke">
                             <div class="tachi-icon tachi-icon-fill-stroke"></div>
-                            <span>塁E緁E/span>
+                            <span>塗+線</span>
                         </div>
                     </div>
                     <select id="tachikiriSelect" style="display:none;">
-                        <option value="none">なぁE/option>
-                        <option value="crop">刁E��抜き</option>
-                        <option value="crop_and_stroke">刁E��抜き+緁E/option>
-                        <option value="stroke_only">線�Eみ</option>
+                        <option value="none">なし</option>
+                        <option value="crop">切り抜き</option>
+                        <option value="crop_and_stroke">切り抜き+線</option>
+                        <option value="stroke_only">線のみ</option>
                         <option value="fill_white" selected>外を塗る</option>
-                        <option value="fill_and_stroke">塗る+緁E/option>
+                        <option value="fill_and_stroke">塗る+線</option>
                     </select>
 
-                    <!-- 篁E��持E��E-->
+                    <!-- 範囲指定 -->
                     <div id="cropSettings" class="crop-settings-inline" style="display:none;">
                         <div class="crop-settings-header">
-                            <span class="crop-settings-label">篁E��持E��E/span>
-                            <span id="cropRangeStatus" class="crop-range-status warning">⚠ 未設宁E/span>
+                            <span class="crop-settings-label">範囲指定</span>
+                            <span id="cropRangeStatus" class="crop-range-status warning">⚠ 未設定</span>
                         </div>
 
                         <!-- 製版台パネル -->
                         <div class="crop-action-panel">
-                            <button id="btnLoadPreview" class="btn-crop-main" title="画像をプレビューして篁E��を指宁E>
-                                <span class="btn-crop-icon">⊁E/span>
+                            <button id="btnLoadPreview" class="btn-crop-main" title="画像をプレビューして範囲を指定">
+                                <span class="btn-crop-icon">⊞</span>
                                 <span class="btn-crop-text">
-                                    <span class="btn-crop-title">ドラチE��で選択篁E��を設宁E/span>
-                                    <span class="btn-crop-subtitle">画像を開いて持E��EↁE/span>
+                                    <span class="btn-crop-title">ドラッグで選択範囲を設定</span>
+                                    <span class="btn-crop-subtitle">画像を開いて指定 →</span>
                                 </span>
                             </button>
                             <div class="crop-alt-action">
-                                <span class="crop-alt-divider">また�E</span>
+                                <span class="crop-alt-divider">または</span>
                                 <button id="btnLoadJson" class="btn-link-subtle" title="JSONファイルから読み込み">📄 JSONから読み込み</button>
                             </div>
                         </div>
 
-                        <!-- ラベル選択！ESON読込後に表示�E�E-->
-                        <span id="jsonInfo" class="json-status" style="display:none;">未設宁E/span>
+                        <!-- ラベル選択（JSON読込後に表示） -->
+                        <span id="jsonInfo" class="json-status" style="display:none;">未設定</span>
                         <div id="labelSelectArea" class="label-select-inline" style="display:none;">
                             <select id="labelSelect" class="label-select"></select>
                         </div>
 
-                        <!-- 数値入劁E-->
+                        <!-- 数値入力 -->
                         <div class="crop-inputs-compact">
                             <label>左<input type="number" id="cropLeft" value="0"></label>
-                            <label>丁Einput type="number" id="cropTop" value="0"></label>
+                            <label>上<input type="number" id="cropTop" value="0"></label>
                             <label>右<input type="number" id="cropRight" value="0"></label>
-                            <label>丁Einput type="number" id="cropBottom" value="0"></label>
+                            <label>下<input type="number" id="cropBottom" value="0"></label>
                             <span id="docSizeInfo" class="doc-size-info"></span>
                         </div>
                         <div id="colorSettings" class="color-row-compact" style="display:none;">
                             <div id="strokeColorRow" class="color-item" style="display:none;">
-                                <label>緁E</label>
+                                <label>線:</label>
                                 <select id="strokeColor">
-                                    <option value="black">黁E/option>
+                                    <option value="black">黒</option>
                                     <option value="white">白</option>
                                     <option value="cyan">水色</option>
                                 </select>
                                 <span class="color-preview" id="strokeColorPreview" style="background:#000;"></span>
                             </div>
                             <div id="fillColorRow" class="color-item" style="display:none;">
-                                <label>塁E</label>
+                                <label>塗:</label>
                                 <select id="fillColor">
-                                    <option value="black">黁E/option>
+                                    <option value="black">黒</option>
                                     <option value="white">白</option>
                                     <option value="cyan">水色</option>
                                 </select>
                                 <span class="color-preview" id="fillColorPreview" style="background:#000;"></span>
                             </div>
                             <div id="fillOpacityRow" class="color-item" style="display:none;">
-                                <label>不透�E度:</label>
+                                <label>不透明度:</label>
                                 <input type="range" id="fillOpacity" min="0" max="100" value="50" class="opacity-slider-sm">
                                 <span id="fillOpacityValue">50%</span>
                             </div>
@@ -168,9 +168,9 @@
                 <section class="section section-compact">
                     <h2>リサイズ</h2>
                     <select id="resizeSelect" class="select-full">
-                        <option value="none">なぁE/option>
-                        <option value="percent">%持E��E/option>
-                        <option value="fixed" selected>チE��ォルト！E250ÁE000�E�E/option>
+                        <option value="none">なし</option>
+                        <option value="percent">%指定</option>
+                        <option value="fixed" selected>デフォルト（2250×3000）</option>
                     </select>
                     <div id="percentSettings" class="inline-setting" style="display:none;">
                         <input type="number" id="resizePercent" value="50" min="1" max="100">
@@ -179,12 +179,12 @@
                 </section>
             </div>
 
-            <!-- 右カラム: 出力形弁E-->
+            <!-- 右カラム: 出力形式 -->
             <div class="main-right">
                 <section class="section section-compact section-output">
-                <h2>出力形弁Espan class="section-hint">�E�褁E��選択可�E�E/span></h2>
+                <h2>出力形式<span class="section-hint">（複数選択可）</span></h2>
 
-                <!-- 出力形式カード（横3列�E褁E��選択可�E�E-->
+                <!-- 出力形式カード（横3列・複数選択可） -->
                 <div id="outputTypeCards" class="output-type-grid">
                     <div class="output-type-card selected" data-type="spread-pdf">
                         <div class="output-type-check"></div>
@@ -194,39 +194,39 @@
                             <div class="icon-page"></div>
                         </div>
                         <span class="output-type-label">見開きPDF</span>
-                        <span class="output-type-desc">2ペ�EジめE見開きに</span>
+                        <span class="output-type-desc">2ページを1見開きに</span>
                     </div>
                     <div class="output-type-card" data-type="single-pdf">
                         <div class="output-type-check"></div>
                         <div class="output-type-icon">
                             <div class="icon-page"></div>
                         </div>
-                        <span class="output-type-label">単�EージPDF</span>
-                        <span class="output-type-desc">1ペ�Eジずつ出劁E/span>
+                        <span class="output-type-label">単ページPDF</span>
+                        <span class="output-type-desc">1ページずつ出力</span>
                     </div>
                     <div class="output-type-card" data-type="jpeg">
                         <div class="output-type-check"></div>
                         <div class="output-type-icon">
                             <span class="icon-text">JPG</span>
                         </div>
-                        <span class="output-type-label">JPEG出劁E/span>
-                        <span class="output-type-desc">画像ファイルで保孁E/span>
+                        <span class="output-type-label">JPEG出力</span>
+                        <span class="output-type-desc">画像ファイルで保存</span>
                     </div>
                 </div>
 
                 <!-- 見開きPDF設定パネル -->
                 <div id="spreadPdfPanel" class="output-detail-panel">
                     <div class="panel-header">
-                        <span class="panel-title">見開きPDF設宁E/span>
+                        <span class="panel-title">見開きPDF設定</span>
                     </div>
                     <!-- ビジュアルプレビュー -->
                     <div class="spread-preview-area">
                         <div class="spread-preview-box" id="spreadPreviewBox">
-                            <!-- 余白�E�白ぁE��刁E��E-->
+                            <!-- 余白（白い部分） -->
                             <div class="spread-preview-margin" id="spreadPreviewMargin">
-                                <!-- 塗りエリア�E�タチキリ塗りがある場合に色がつく！E-->
+                                <!-- 塗りエリア（タチキリ塗りがある場合に色がつく） -->
                                 <div class="spread-preview-fill" id="spreadPreviewFill">
-                                    <!-- 見開き�Eージ�E�右綴じ：左が後�Eージ、右が�Eペ�Eジ�E�E-->
+                                    <!-- 見開きページ（右綴じ：左が後ページ、右が先ページ） -->
                                     <div class="spread-preview-pages">
                                         <div class="spread-preview-page" id="spreadPreviewPageLeft">
                                             <span class="page-number" id="spreadPageLeftNum">2</span>
@@ -234,9 +234,9 @@
                                         <div class="spread-preview-gutter" id="spreadPreviewGutter"></div>
                                         <div class="spread-preview-page" id="spreadPreviewPageRight">
                                             <span class="page-number" id="spreadPageRightNum">1</span>
-                                            <!-- 白紙表示�E��E頭白紙追加ON時！E-->
+                                            <!-- 白紙表示（先頭白紙追加ON時） -->
                                             <span class="white-page-overlay" id="spreadWhitePageOverlay">
-                                                <span class="white-page-text" id="spreadWhitePageText">白紁E/span>
+                                                <span class="white-page-text" id="spreadWhitePageText">白紙</span>
                                                 <span class="white-page-info" id="spreadPreviewWorkInfo"></span>
                                             </span>
                                         </div>
@@ -245,7 +245,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- スライダー設宁E-->
+                    <!-- スライダー設定 -->
                     <div class="spread-settings-row">
                         <div class="toggle-slider-group">
                             <label class="checkbox-sm"><input type="checkbox" id="spreadGutterEnabled" checked><span>ノド</span></label>
@@ -262,20 +262,20 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ペ�Eジ設定グルーチE-->
+                    <!-- ページ設定グループ -->
                     <div class="page-settings-group">
-                        <span class="page-settings-label">ペ�Eジ設宁E/span>
+                        <span class="page-settings-label">ページ設定</span>
                         <div class="spread-options-row">
                             <label class="checkbox-sm"><input type="checkbox" id="spreadAddNombre" checked><span>ノンブル</span></label>
-                            <label class="checkbox-sm"><input type="checkbox" id="spreadWhitePage" checked><span>先頭白紁E/span></label>
-                            <label class="checkbox-sm"><input type="checkbox" id="spreadWorkInfo"><span>作品惁E��</span></label>
+                            <label class="checkbox-sm"><input type="checkbox" id="spreadWhitePage" checked><span>先頭白紙</span></label>
+                            <label class="checkbox-sm"><input type="checkbox" id="spreadWorkInfo"><span>作品情報</span></label>
                         </div>
-                        <!-- ノンブル詳細設定（展開式！E-->
+                        <!-- ノンブル詳細設定（展開式） -->
                         <div id="spreadNombreSettings" class="nombre-settings-inline">
-                            <label>開姁E<input type="number" id="spreadNombreStart" value="1" min="1" class="nombre-input"></label>
+                            <label>開始:<input type="number" id="spreadNombreStart" value="1" min="1" class="nombre-input"></label>
                             <label>サイズ:
                                 <select id="spreadNombreSize" class="nombre-select">
-                                    <option value="small">封E/option>
+                                    <option value="small">小</option>
                                     <option value="medium" selected>中</option>
                                     <option value="large">大</option>
                                     <option value="xlarge">特大</option>
@@ -285,10 +285,10 @@
                     </div>
                 </div>
 
-                <!-- 単�EージPDF設定パネル -->
+                <!-- 単ページPDF設定パネル -->
                 <div id="singlePdfPanel" class="output-detail-panel" style="display:none;">
                     <div class="panel-header">
-                        <span class="panel-title">単�EージPDF設宁E/span>
+                        <span class="panel-title">単ページPDF設定</span>
                     </div>
                     <div class="single-preview-area">
                         <div class="single-preview-box" id="singlePreviewBox">
@@ -300,28 +300,28 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ノンブル設宁E-->
+                    <!-- ノンブル設定 -->
                     <div class="single-nombre-section">
                         <label class="checkbox-sm"><input type="checkbox" id="singleAddNombre" checked><span>ノンブル追加</span></label>
                         <div id="singleNombreSettings" class="nombre-settings-inline">
-                            <label>開姁E<input type="number" id="singleNombreStart" value="1" min="1" class="nombre-input"></label>
+                            <label>開始:<input type="number" id="singleNombreStart" value="1" min="1" class="nombre-input"></label>
                             <label>サイズ:
                                 <select id="singleNombreSize" class="nombre-select">
-                                    <option value="small">封E/option>
+                                    <option value="small">小</option>
                                     <option value="medium" selected>中</option>
                                     <option value="large">大</option>
                                     <option value="xlarge">特大</option>
                                 </select>
                             </label>
                         </div>
-                        <div class="nombre-hint">※ 有効時�EPDF下部に余白を追加</div>
+                        <div class="nombre-hint">※ 有効時はPDF下部に余白を追加</div>
                     </div>
                 </div>
 
                 <!-- JPEG設定パネル -->
                 <div id="jpegPanel" class="output-detail-panel" style="display:none;">
                     <div class="panel-header">
-                        <span class="panel-title">JPEG設宁E/span>
+                        <span class="panel-title">JPEG設定</span>
                     </div>
                     <!-- JPEGビジュアルプレビュー -->
                     <div class="jpeg-preview-area">
@@ -334,29 +334,29 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ノンブル設定！EPEG単独選択時に表示�E�E-->
+                    <!-- ノンブル設定（JPEG単独選択時に表示） -->
                     <div id="jpegNombreSection" class="jpeg-nombre-section">
                         <label class="checkbox-sm"><input type="checkbox" id="jpegAddNombre" checked><span>ノンブル追加</span></label>
                         <div id="jpegNombreSettings" class="nombre-settings-inline">
-                            <label>開姁E<input type="number" id="jpegNombreStart" value="1" min="1" class="nombre-input"></label>
+                            <label>開始:<input type="number" id="jpegNombreStart" value="1" min="1" class="nombre-input"></label>
                             <label>サイズ:
                                 <select id="jpegNombreSize" class="nombre-select">
-                                    <option value="small">封E/option>
+                                    <option value="small">小</option>
                                     <option value="medium" selected>中</option>
                                     <option value="large">大</option>
                                     <option value="xlarge">特大</option>
                                 </select>
                             </label>
                         </div>
-                        <div class="nombre-hint">※ 画像下部に追加�E�タチキリ領域冁E��E/div>
+                        <div class="nombre-hint">※ 画像下部に追加（タチキリ領域内）</div>
                     </div>
-                    <!-- PDF併用時�EメチE��ージ -->
+                    <!-- PDF併用時のメッセージ -->
                     <div id="jpegPdfSyncNote" class="jpeg-sync-note" style="display:none;">
-                        ※ ノンブル設定�EPDF設定と共通でぁE
+                        ※ ノンブル設定はPDF設定と共通です
                     </div>
-                    <!-- 出力�E説昁E-->
+                    <!-- 出力先説明 -->
                     <div class="jpeg-info-text">
-                        出力�E: <code>出力フォルダ/jpg/</code>
+                        出力先: <code>出力フォルダ/jpg/</code>
                     </div>
                 </div>
                 </section>
@@ -365,22 +365,22 @@
 
         <footer class="footer">
             <div id="progressArea" class="progress-area" style="display:none;">
-                <div id="progressText" class="progress-text">処琁E��...</div>
+                <div id="progressText" class="progress-text">処理中...</div>
                 <div class="progress-bar-wrap">
                     <div id="progressBar" class="progress-bar"></div>
                 </div>
             </div>
-            <button id="btnExecute" class="btn btn-execute" disabled>実衁E/button>
+            <button id="btnExecute" class="btn btn-execute" disabled>実行</button>
         </footer>
 
-        <!-- 完亁E��ーダル -->
+        <!-- 完了モーダル -->
         <div id="modal" class="modal" style="display:none;">
             <div class="modal-content">
-                <h3>処琁E��亁E/h3>
+                <h3>処理完了</h3>
                 <div id="modalMessage"></div>
                 <div class="modal-btns">
-                    <button id="btnOpenFolder" class="btn btn-primary">フォルダを開ぁE/button>
-                    <button id="btnCloseModal" class="btn">閉じめE/button>
+                    <button id="btnOpenFolder" class="btn btn-primary">フォルダを開く</button>
+                    <button id="btnCloseModal" class="btn">閉じる</button>
                 </div>
             </div>
         </div>
@@ -400,32 +400,32 @@
             <div class="confirm-modal-backdrop"></div>
             <div class="confirm-modal-content">
                 <div class="confirm-modal-header">
-                    <span class="confirm-modal-icon">⚁E/span>
-                    <span class="confirm-modal-title">確誁E/span>
+                    <span class="confirm-modal-icon">⚙</span>
+                    <span class="confirm-modal-title">確認</span>
                 </div>
                 <div class="confirm-modal-body">
-                    <p id="confirmModalMessage">設定を初期状態に戻しますか�E�E/p>
+                    <p id="confirmModalMessage">設定を初期状態に戻しますか？</p>
                 </div>
                 <div class="confirm-modal-actions">
                     <button id="confirmModalCancel" class="btn confirm-btn-cancel">キャンセル</button>
-                    <button id="confirmModalOk" class="btn confirm-btn-ok">リセチE��</button>
+                    <button id="confirmModalOk" class="btn confirm-btn-ok">リセット</button>
                 </div>
             </div>
         </div>
 
-        <!-- 処琁E��オーバ�Eレイ - 印刷工房チE��イン -->
+        <!-- 処理中オーバーレイ - 印刷工房デザイン -->
         <div id="processingOverlay" class="processing-overlay" style="display:none;">
             <div class="processing-backdrop"></div>
             <div class="processing-content">
                 <!-- 印刷機パネル -->
                 <div class="print-machine">
-                    <!-- ヘッダー�E�工程表示 -->
+                    <!-- ヘッダー：工程表示 -->
                     <div class="machine-header">
-                        <div class="machine-title">原稿処琁E��スチE��</div>
+                        <div class="machine-title">原稿処理システム</div>
                         <div class="machine-status" id="processingPhaseLabel">準備中</div>
                     </div>
 
-                    <!-- メインチE��スプレイ -->
+                    <!-- メインディスプレイ -->
                     <div class="machine-display">
                         <div class="display-percent" id="processingPercent">0</div>
                         <div class="display-unit">%</div>
@@ -460,7 +460,7 @@
                         <div class="step-connector"></div>
                         <div class="step" data-phase="complete">
                             <div class="step-indicator"></div>
-                            <div class="step-label">完亁E/div>
+                            <div class="step-label">完了</div>
                         </div>
                     </div>
 
@@ -471,7 +471,7 @@
                             <span class="counter-sep">/</span>
                             <span class="counter-total" id="processingTotal">0</span>
                         </div>
-                        <div class="counter-label">処琁E��E/div>
+                        <div class="counter-label">処理済</div>
                     </div>
 
                     <!-- ファイル名表示 -->
@@ -484,64 +484,64 @@
                     </div>
                 </div>
 
-                <!-- 完亁E��の押印 -->
+                <!-- 完了時の押印 -->
                 <div class="stamp-complete" id="stampComplete">
                     <div class="stamp-circle">
-                        <div class="stamp-text">完亁E/div>
+                        <div class="stamp-text">完了</div>
                     </div>
                     <div class="stamp-time" id="completionTime"></div>
                 </div>
             </div>
         </div>
 
-        <!-- 画像読み込みローチE��ングオーバ�Eレイ -->
+        <!-- 画像読み込みローディングオーバーレイ -->
         <div id="imageLoadingOverlay" class="loading-overlay" style="display:none;">
             <div class="loading-content">
                 <div class="loading-spinner"></div>
                 <div class="loading-text">画像を読み込み中...</div>
                 <div class="loading-timer">
-                    <span id="loadingTimePrefix">残り紁E/span>
+                    <span id="loadingTimePrefix">残り約</span>
                     <span id="loadingRemaining">10</span>
-                    <span id="loadingTimeSuffix">私E/span>
+                    <span id="loadingTimeSuffix">秒</span>
                 </div>
-                <div class="loading-hint" id="loadingHint">PSDファイルの読み込みには時間がかかる場合がありまぁE/div>
+                <div class="loading-hint" id="loadingHint">PSDファイルの読み込みには時間がかかる場合があります</div>
             </div>
         </div>
 
-        <!-- 画像選択モードオーバ�Eレイ -->
+        <!-- 画像選択モードオーバーレイ -->
         <div id="cropModeOverlay" class="crop-mode-overlay" style="display:none;">
             <div class="crop-mode-preview">
                 <!-- 定規付きプレビューエリア -->
                 <div class="ruler-preview-wrapper">
-                    <!-- コーナ�E�E�左上�E空白�E�E-->
+                    <!-- コーナー（左上の空白） -->
                     <div class="ruler-corner"></div>
-                    <!-- 上部定要E-->
-                    <div class="ruler ruler-horizontal" id="rulerHorizontal" title="ↁEドラチE��でガイドを追加">
+                    <!-- 上部定規 -->
+                    <div class="ruler ruler-horizontal" id="rulerHorizontal" title="↓ ドラッグでガイドを追加">
                         <canvas id="rulerHCanvas" class="ruler-canvas"></canvas>
                         <div class="ruler-grip">⋮</div>
                     </div>
-                    <!-- 左側定要E-->
-                    <div class="ruler ruler-vertical" id="rulerVertical" title="ↁEドラチE��でガイドを追加">
+                    <!-- 左側定規 -->
+                    <div class="ruler ruler-vertical" id="rulerVertical" title="→ ドラッグでガイドを追加">
                         <canvas id="rulerVCanvas" class="ruler-canvas"></canvas>
                         <div class="ruler-grip">⋯</div>
                     </div>
-                    <!-- 画像コンチE�� -->
+                    <!-- 画像コンテナ -->
                     <div class="crop-mode-preview-container" id="cropPreviewContainerFull">
                         <div id="zoomWrapper" class="zoom-wrapper">
                             <img id="cropPreviewImgFull" class="crop-preview-img-full" draggable="false">
                             <div id="guideLinesContainer" class="guide-lines-container"></div>
                             <div id="cropSelectionFull" class="crop-selection-full"></div>
-                            <!-- 塗りプレビュー�E�選択篁E��外�E塗り�E�E-->
+                            <!-- 塗りプレビュー（選択範囲外の塗り） -->
                             <div id="fillPreview" class="fill-preview" style="display:none;"></div>
-                            <!-- ストロークプレビュー�E�E辺の線！E-->
+                            <!-- ストロークプレビュー（4辺の線） -->
                             <div id="strokePreviewTop" class="stroke-preview stroke-h" style="display:none;"></div>
                             <div id="strokePreviewBottom" class="stroke-preview stroke-h" style="display:none;"></div>
                             <div id="strokePreviewLeft" class="stroke-preview stroke-v" style="display:none;"></div>
                             <div id="strokePreviewRight" class="stroke-preview stroke-v" style="display:none;"></div>
-                            <!-- ドラチE��中のガイド�Eレビュー -->
+                            <!-- ドラッグ中のガイドプレビュー -->
                             <div id="guidePreview" class="guide-preview" style="display:none;"></div>
                         </div>
-                        <!-- フローチE��ング削除ボタン�E�右下に配置�E�E-->
+                        <!-- フローティング削除ボタン（右下に配置） -->
                         <button id="btnFloatingClearAll" class="btn-floating-delete" style="display:none;" title="すべてクリア">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -553,25 +553,25 @@
             </div>
             <div class="crop-mode-panel">
                 <div class="crop-mode-header">
-                    <h3>版面持E��E/h3>
-                    <!-- ペ�Eジナビゲーション�E��EチE��ー冁E��E-->
+                    <h3>版面指定</h3>
+                    <!-- ページナビゲーション（ヘッダー内） -->
                     <div class="crop-page-nav-inline">
-                        <button id="btnPrevPage" class="btn btn-xs" title="前�Eペ�Eジ">◀</button>
+                        <button id="btnPrevPage" class="btn btn-xs" title="前のページ">◀</button>
                         <span id="cropPageInfo" class="crop-page-info">1 / 1</span>
-                        <button id="btnNextPage" class="btn btn-xs" title="次のペ�Eジ">▶</button>
+                        <button id="btnNextPage" class="btn btn-xs" title="次のページ">▶</button>
                     </div>
                 </div>
 
-                <!-- スチE��プインジケーター -->
+                <!-- ステップインジケーター -->
                 <div class="crop-step-indicator" id="cropStepIndicator">
                     <div class="crop-step" data-step="select">
                         <div class="crop-step-dot"></div>
-                        <span class="crop-step-label">選抁E/span>
+                        <span class="crop-step-label">選択</span>
                     </div>
                     <div class="crop-step-line"></div>
                     <div class="crop-step" data-step="confirm">
                         <div class="crop-step-dot"></div>
-                        <span class="crop-step-label">確誁E/span>
+                        <span class="crop-step-label">確認</span>
                     </div>
                     <div class="crop-step-line"></div>
                     <div class="crop-step" data-step="apply">
@@ -580,20 +580,20 @@
                     </div>
                 </div>
 
-                <!-- ヒントテキスチE-->
-                <p class="crop-mode-hint" id="cropModeHint">画像上をドラチE��して篁E��を選抁E/p>
+                <!-- ヒントテキスト -->
+                <p class="crop-mode-hint" id="cropModeHint">画像上をドラッグして範囲を選択</p>
 
-                <!-- 篁E��の持E��方況E-->
+                <!-- 範囲の指定方法 -->
                 <div class="crop-method-section">
-                    <div class="crop-method-label">篁E��の持E��方況E/div>
+                    <div class="crop-method-label">範囲の指定方法</div>
                     <div class="crop-method-cards">
                         <button class="crop-method-card" id="btnMethodDrag">
                             <svg class="method-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2"/>
                                 <path d="M8 8L16 16M16 16V10M16 16H10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
-                            <span class="method-title">ドラチE��</span>
-                            <span class="method-desc">画像上を直接選抁E/span>
+                            <span class="method-title">ドラッグ</span>
+                            <span class="method-desc">画像上を直接選択</span>
                         </button>
                         <button class="crop-method-card" id="btnMethodGuide">
                             <svg class="method-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -602,8 +602,8 @@
                                 <circle cx="7" cy="12" r="2" fill="currentColor"/>
                                 <circle cx="17" cy="12" r="2" fill="currentColor"/>
                             </svg>
-                            <span class="method-title">ガイチE/span>
-                            <span class="method-desc">定規から引いて設宁E/span>
+                            <span class="method-title">ガイド</span>
+                            <span class="method-desc">定規から引いて設定</span>
                         </button>
                     </div>
                     <!-- JSON読み込みボタン -->
@@ -615,7 +615,7 @@
                         </svg>
                         <span>JSONから読み込む</span>
                     </button>
-                    <!-- JSON読み込み後�Eラベル選抁E-->
+                    <!-- JSON読み込み後のラベル選択 -->
                     <div id="cropModeLabelSelect" class="crop-mode-label-select" style="display:none;">
                         <select id="labelSelectInCrop" class="label-select-full"></select>
                     </div>
@@ -631,37 +631,37 @@
                     </button>
                 </div>
 
-                <!-- 現在の篁E�� -->
+                <!-- 現在の範囲 -->
                 <div class="crop-current-range">
                     <div class="range-header">
-                        <span class="range-title">現在の篁E��</span>
-                        <button id="btnResetRange" class="btn btn-xs" title="リセチE��">リセチE��</button>
+                        <span class="range-title">現在の範囲</span>
+                        <button id="btnResetRange" class="btn btn-xs" title="リセット">リセット</button>
                     </div>
                     <div class="range-values">
                         <div class="range-value-item">
-                            <span class="range-label">ↁE/span>
+                            <span class="range-label">←</span>
                             <input type="number" id="cropLeftFull" value="0" class="led-input">
                         </div>
                         <div class="range-value-item">
-                            <span class="range-label">ↁE/span>
+                            <span class="range-label">↑</span>
                             <input type="number" id="cropTopFull" value="0" class="led-input">
                         </div>
                         <div class="range-value-item">
-                            <span class="range-label">ↁE/span>
+                            <span class="range-label">→</span>
                             <input type="number" id="cropRightFull" value="0" class="led-input">
                         </div>
                         <div class="range-value-item">
-                            <span class="range-label">ↁE/span>
+                            <span class="range-label">↓</span>
                             <input type="number" id="cropBottomFull" value="0" class="led-input">
                         </div>
                     </div>
                     <div id="cropModeDocSize" class="crop-mode-doc-size"></div>
                 </div>
 
-                <!-- ガイドセクション�E�ガイドがある時�Eみ表示�E�E-->
+                <!-- ガイドセクション（ガイドがある時のみ表示） -->
                 <div class="guide-section" id="guideSectionPanel" style="display:none;">
                     <div class="guide-action-row">
-                        <button id="btnApplyGuides" class="btn btn-xs btn-primary">ガイドから篁E��を設宁E/button>
+                        <button id="btnApplyGuides" class="btn btn-xs btn-primary">ガイドから範囲を設定</button>
                         <button id="btnClearGuides" class="btn btn-xs" title="ガイドを全て削除">全削除</button>
                     </div>
                     <div id="guideList" class="guide-list" style="display:none;"></div>
@@ -669,37 +669,37 @@
 
                 <div id="cropModeColorSettings" class="crop-mode-colors" style="display:none;">
                     <div class="crop-color-item" id="cropModeStrokeRow" style="display:none;">
-                        <label>緁E</label>
+                        <label>線:</label>
                         <select id="strokeColorFull">
-                            <option value="black">黁E/option>
+                            <option value="black">黒</option>
                             <option value="white">白</option>
                             <option value="cyan">水色</option>
                         </select>
                         <span class="color-preview" id="strokeColorPreviewFull" style="background:#000;"></span>
                     </div>
                     <div class="crop-color-item" id="cropModeFillRow" style="display:none;">
-                        <label>塁E</label>
+                        <label>塗:</label>
                         <select id="fillColorFull">
-                            <option value="black">黁E/option>
+                            <option value="black">黒</option>
                             <option value="white">白</option>
                             <option value="cyan">水色</option>
                         </select>
                         <span class="color-preview" id="fillColorPreviewFull" style="background:#000;"></span>
                     </div>
                     <div class="crop-color-item" id="cropModeOpacityRow" style="display:none;">
-                        <label>不透�E度:</label>
+                        <label>不透明度:</label>
                         <input type="range" id="fillOpacityFull" min="0" max="100" value="50" class="opacity-slider-sm">
                         <span id="fillOpacityValueFull">50%</span>
                     </div>
                 </div>
 
-                <!-- ガイドから篁E��を設定�Eタン�E�ガイドが4本以上で表示�E�E-->
+                <!-- ガイドから範囲を設定ボタン（ガイドが4本以上で表示） -->
                 <button id="btnPanelApplyGuides" class="btn-guide-apply" style="display:none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 3v18M21 3v18M3 12h18" opacity="0.5"/>
                         <polyline points="17 8 12 13 9 10" stroke-width="2.5"/>
                     </svg>
-                    ガイドから篁E��を設宁E
+                    ガイドから範囲を設定
                 </button>
 
                 <div class="crop-mode-actions">
@@ -714,7 +714,7 @@
             <div class="json-select-backdrop"></div>
             <div class="json-select-content">
                 <div class="json-select-header">
-                    <h3>JSONファイルを選抁E/h3>
+                    <h3>JSONファイルを選択</h3>
                     <button id="btnJsonSelectClose" class="json-select-close">&times;</button>
                 </div>
                 <div class="json-select-search">
@@ -726,7 +726,7 @@
                     <div class="json-select-loading">読み込み中...</div>
                 </div>
                 <div class="json-select-actions">
-                    <button id="btnJsonSelectBrowse" class="btn btn-xs">ローカルを開ぁE/button>
+                    <button id="btnJsonSelectBrowse" class="btn btn-xs">ローカルを開く</button>
                 </div>
             </div>
         </div>
@@ -740,28 +740,28 @@
                     <button id="btnJsonRegisterClose" class="json-register-close">&times;</button>
                 </div>
 
-                <!-- 現在の選択篁E��プレビュー -->
+                <!-- 現在の選択範囲プレビュー -->
                 <div class="register-current-range">
-                    <div class="register-range-title">登録する篁E��</div>
+                    <div class="register-range-title">登録する範囲</div>
                     <div class="register-range-values">
                         <span>左: <strong id="registerLeft">0</strong></span>
-                        <span>丁E <strong id="registerTop">0</strong></span>
+                        <span>上: <strong id="registerTop">0</strong></span>
                         <span>右: <strong id="registerRight">0</strong></span>
-                        <span>丁E <strong id="registerBottom">0</strong></span>
+                        <span>下: <strong id="registerBottom">0</strong></span>
                     </div>
                     <div class="register-range-size">
-                        サイズ: <strong id="registerSize">0 ÁE0</strong> px
-                        �E�画僁E <span id="registerDocSize">0 ÁE0</span> px�E�E
+                        サイズ: <strong id="registerSize">0 × 0</strong> px
+                        （画像: <span id="registerDocSize">0 × 0</span> px）
                     </div>
                 </div>
 
-                <!-- タブ�E替 -->
+                <!-- タブ切替 -->
                 <div class="register-tabs">
-                    <button class="register-tab active" data-tab="new">新規作�E</button>
+                    <button class="register-tab active" data-tab="new">新規作成</button>
                     <button class="register-tab" data-tab="existing">既存に追加</button>
                 </div>
 
-                <!-- 新規作�Eパネル -->
+                <!-- 新規作成パネル -->
                 <div class="register-panel" id="registerPanelNew">
                     <div class="register-form-group">
                         <label>ジャンル</label>
@@ -772,7 +772,7 @@
                             <option value="BL">BL</option>
                             <option value="一般男性">一般男性</option>
                             <option value="メンズ">メンズ</option>
-                            <option value="タチE��チE>タチE��チE/option>
+                            <option value="タテコミ">タテコミ</option>
                         </select>
                     </div>
                     <div class="register-form-group">
@@ -783,32 +783,32 @@
                     </div>
                     <div class="register-form-group">
                         <label>作品タイトル</label>
-                        <input type="text" id="registerTitle" class="register-input" placeholder="作品タイトルを�E劁E>
+                        <input type="text" id="registerTitle" class="register-input" placeholder="作品タイトルを入力">
                     </div>
                     <div class="register-form-group">
-                        <label>篁E��ラベル吁E/label>
-                        <input type="text" id="registerRangeLabelNew" class="register-input" placeholder="基本篁E��">
-                        <div class="register-hint">※ 画像サイズは自動で付加されまぁE/div>
+                        <label>範囲ラベル名</label>
+                        <input type="text" id="registerRangeLabelNew" class="register-input" placeholder="基本範囲">
+                        <div class="register-hint">※ 画像サイズは自動で付加されます</div>
                     </div>
                     <div class="register-actions">
-                        <button id="btnSaveNewJson" class="btn btn-primary">新規作�Eして保孁E/button>
+                        <button id="btnSaveNewJson" class="btn btn-primary">新規作成して保存</button>
                     </div>
                 </div>
 
                 <!-- 既存に追加パネル -->
                 <div class="register-panel" id="registerPanelExisting" style="display:none;">
                     <div class="register-form-group">
-                        <label>保存�EJSONファイル</label>
+                        <label>保存先JSONファイル</label>
                         <div class="register-file-select">
-                            <input type="text" id="registerExistingFile" class="register-input" readonly placeholder="クリチE��して選抁E>
-                            <button id="btnSelectExistingJson" class="btn btn-xs">選抁E/button>
+                            <input type="text" id="registerExistingFile" class="register-input" readonly placeholder="クリックして選択">
+                            <button id="btnSelectExistingJson" class="btn btn-xs">選択</button>
                         </div>
                         <div id="registerExistingInfo" class="register-existing-info" style="display:none;"></div>
                     </div>
                     <div class="register-form-group">
-                        <label>篁E��ラベル吁E/label>
-                        <input type="text" id="registerRangeLabelExisting" class="register-input" placeholder="基本篁E��">
-                        <div class="register-hint">※ 画像サイズは自動で付加されまぁE/div>
+                        <label>範囲ラベル名</label>
+                        <input type="text" id="registerRangeLabelExisting" class="register-input" placeholder="基本範囲">
+                        <div class="register-hint">※ 画像サイズは自動で付加されます</div>
                     </div>
                     <div class="register-actions">
                         <button id="btnAddToExisting" class="btn btn-primary" disabled>既存JSONに追加</button>
@@ -817,19 +817,19 @@
             </div>
         </div>
 
-        <!-- 重褁E��ベル確認モーダル -->
+        <!-- 重複ラベル確認モーダル -->
         <div id="duplicateLabelModal" class="duplicate-label-modal" style="display:none;">
             <div class="duplicate-label-backdrop"></div>
             <div class="duplicate-label-content">
                 <div class="duplicate-label-header">
-                    <h3>同名ラベルが存在しまぁE/h3>
+                    <h3>同名ラベルが存在します</h3>
                 </div>
                 <div class="duplicate-label-body">
-                    <p>、Espan id="duplicateLabelName"></span>」�E既に存在します、E/p>
-                    <p>どのように処琁E��ますか�E�E/p>
+                    <p>「<span id="duplicateLabelName"></span>」は既に存在します。</p>
+                    <p>どのように処理しますか？</p>
                 </div>
                 <div class="duplicate-label-actions">
-                    <button id="btnDuplicateOverwrite" class="btn">上書ぁE/button>
+                    <button id="btnDuplicateOverwrite" class="btn">上書き</button>
                     <button id="btnDuplicateRename" class="btn">別名に変更</button>
                     <button id="btnDuplicateAddDate" class="btn">日時を追加</button>
                     <button id="btnDuplicateCancel" class="btn btn-secondary">キャンセル</button>
@@ -837,28 +837,28 @@
             </div>
         </div>
 
-        <!-- 機�EアンロチE��設定モーダル -->
+        <!-- 機能アンロック設定モーダル -->
         <div id="featureUnlockModal" class="feature-unlock-modal" style="display:none;">
             <div class="feature-unlock-backdrop"></div>
             <div class="feature-unlock-content">
                 <div class="feature-unlock-header">
-                    <h3>機�EアンロチE��</h3>
+                    <h3>機能アンロック</h3>
                     <button id="btnFeatureUnlockClose" class="feature-unlock-close">&times;</button>
                 </div>
                 <div class="feature-unlock-scroll-area">
                     <div class="feature-unlock-body">
-                        <!-- ロチE��状態インジケーター -->
+                        <!-- ロック状態インジケーター -->
                         <div id="unlockStatus" class="unlock-status locked">
                             <div class="unlock-status-indicator"></div>
-                            <span class="unlock-status-text">JSON新規登録: ロチE��中</span>
+                            <span class="unlock-status-text">JSON新規登録: ロック中</span>
                         </div>
 
-                        <!-- パスワード�E力エリア�E�ロチE��時�Eみ表示�E�E-->
+                        <!-- パスワード入力エリア（ロック時のみ表示） -->
                         <div id="unlockInputArea" class="unlock-input-area">
-                            <label class="unlock-label">パスワードを入劁E/label>
+                            <label class="unlock-label">パスワードを入力</label>
                             <div class="unlock-input-row">
                                 <input type="password" id="unlockPassword" class="unlock-input"
-                                       placeholder="パスワーチE autocomplete="off">
+                                       placeholder="パスワード" autocomplete="off">
                                 <button id="btnUnlock" class="btn-unlock">解除</button>
                             </div>
                             <div id="unlockError" class="unlock-error" style="display:none;">
@@ -866,42 +866,42 @@
                             </div>
                         </div>
 
-                        <!-- アンロチE��済み表示�E�アンロチE��時�Eみ表示�E�E-->
+                        <!-- アンロック済み表示（アンロック時のみ表示） -->
                         <div id="unlockedArea" class="unlocked-area" style="display:none;">
                             <div class="unlocked-badge">
-                                <span class="unlocked-icon">✁E/span>
-                                <span>JSON新規登録が利用可能でぁE/span>
+                                <span class="unlocked-icon">✓</span>
+                                <span>JSON新規登録が利用可能です</span>
                             </div>
-                            <button id="btnLockAgain" class="btn-lock-again">再ロチE��</button>
+                            <button id="btnLockAgain" class="btn-lock-again">再ロック</button>
                         </div>
                     </div>
-                    <!-- 更新チェチE��セクション -->
+                    <!-- 更新チェックセクション -->
                     <div class="update-check-section">
                         <div class="update-check-header">
-                            <span>アチE�EチE�EチE/span>
+                            <span>アップデート</span>
                         </div>
                         <div id="updateStatus" class="update-status">
-                            <span id="currentVersion" class="current-version">v1.0.8</span>
+                            <span id="currentVersion" class="current-version">v1.0.7</span>
                         </div>
                         <button id="btnCheckUpdate" class="btn-check-update">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 12a9 9 0 11-6.219-8.56"/>
                                 <path d="M21 3v9h-9"/>
                             </svg>
-                            更新を確誁E
+                            更新を確認
                         </button>
                         <div id="updateResult" class="update-result" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="feature-unlock-footer">
-                    <span class="version-info">タチミ Standalone v1.0.8</span>
+                    <span class="version-info">タチミ Standalone v1.0.7</span>
                 </div>
             </div>
         </div>
     </div>
-    <!-- 新しいモジュールシスチE�� -->
+    <!-- 新しいモジュールシステム -->
     <script type="module" src="js/main.js"></script>
-    <!-- 既存�Eレンダラー�E�段階的に移行予定！E-->
+    <!-- 既存のレンダラー（段階的に移行予定） -->
     <script src="renderer.js"></script>
 </body>
 </html>
