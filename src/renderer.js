@@ -281,7 +281,7 @@ async function checkForUpdate() {
                 resultEl.innerHTML = `
                     <div><strong>新しいバージョンがあります: v${update.version}</strong></div>
                     <div style="margin-top: 6px; font-size: 11px; color: var(--text3);">${update.body || ''}</div>
-                    <button id="btnInstallUpdate" class="btn-install-update" onclick="installUpdate()">
+                    <button id="btnInstallUpdate" class="btn-install-update">
                         ダウンロードしてインストール
                     </button>
                 `;
@@ -289,6 +289,9 @@ async function checkForUpdate() {
 
                 // 更新オブジェクトを保存
                 window._pendingUpdate = update;
+
+                // イベントリスナーを追加
+                $('btnInstallUpdate').onclick = () => installUpdate();
             } else {
                 // 更新なし
                 resultEl.className = 'update-result no-update';
