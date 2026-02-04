@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Tachimi ${{ github.ref_name }}'
+          releaseBody: |
+            ## タチミ ${{ github.ref_name }}
+
+            ### インストール方法
+            1. `Tachimi_x.x.x_x64-setup.exe` をダウンロード
+            2. インストーラーを実行してください
+
+            既存のバージョンがインストールされている場合は、自動更新機能でもアップデートできます。
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          updaterJsonPreferNsis: true
+          includeUpdaterJson: true
+
+      - name: Debug - List build artifacts
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Bundle directory ==="
+          find src-tauri/target/release/bundle -type f -name "*.json" -o -name "*.sig" 2>/dev/null || echo "No bundle directory"
+          echo "=== All nsis files ==="
+          ls -la src-tauri/target/release/bundle/nsis/ 2>/dev/null || echo "No nsis directory"

@@ -1,0 +1,95 @@
+[package]
+name = "tachimi"
+version = "1.0.10"
+description = "漫画原稿一括処理アプリ - タチミ"
+authors = ["Tachimi"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "tachimi_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Image processing
+image = { version = "0.25", features = ["png", "jpeg", "gif", "webp"] }
+imageproc = "0.24"
+ab_glyph = "0.2"
+psd = "0.3"
+mozjpeg = "0.10"
+
+# PDF generation
+printpdf = "0.7"
+
+# Utilities
+base64 = "0.22"
+walkdir = "2"
+log = "0.4"
+rayon = "1.10"
+dirs = "5"
+
+# Async runtime
+tokio = { version = "1", features = ["rt", "sync"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+# 開発ビルドでも画像処理を高速化
+[profile.dev]
+opt-level = 2
+
+# 画像処理系
+[profile.dev.package.image]
+opt-level = 3
+
+[profile.dev.package.imageproc]
+opt-level = 3
+
+[profile.dev.package.mozjpeg]
+opt-level = 3
+
+[profile.dev.package.psd]
+opt-level = 3
+
+[profile.dev.package.png]
+opt-level = 3
+
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+
+# PDF生成
+[profile.dev.package.printpdf]
+opt-level = 3
+
+[profile.dev.package.lopdf]
+opt-level = 3
+
+# 圧縮・並列処理
+[profile.dev.package.flate2]
+opt-level = 3
+
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[profile.dev.package.rayon]
+opt-level = 3
+
+[profile.dev.package.rayon-core]
+opt-level = 3

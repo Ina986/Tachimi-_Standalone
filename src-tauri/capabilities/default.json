@@ -1,0 +1,43 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "タチミアプリのデフォルトパーミッション",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:app:default",
+    "core:event:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:default",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "**" },
+        { "path": "G:/**" },
+        { "path": "G:/共有ドライブ/**" }
+      ]
+    },
+    {
+      "identifier": "fs:read-all",
+      "allow": [
+        { "path": "**" },
+        { "path": "G:/**" }
+      ]
+    },
+    {
+      "identifier": "fs:write-all",
+      "allow": [
+        { "path": "**" }
+      ]
+    },
+    "shell:default",
+    "shell:allow-open",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
+  ]
+}
