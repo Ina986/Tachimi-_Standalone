@@ -5629,6 +5629,11 @@ const SETTINGS_STORAGE_KEY = 'tachimi_settings';
 function saveSettings() {
     try {
         const settings = {
+            // 出力形式の選択状態
+            spreadPdfSelected: selectedOutputs.spreadPdf,
+            singlePdfSelected: selectedOutputs.singlePdf,
+            jpegSelected: selectedOutputs.jpeg,
+
             // タチキリ処理
             tachikiriType: $('tachikiriSelect')?.value || 'fill_white',
             fillColor: $('fillColor')?.value || 'white',
@@ -5680,6 +5685,30 @@ function loadSettings() {
 
         const settings = JSON.parse(saved);
         console.log('設定を読み込み:', settings.savedAt);
+
+        // 出力形式の選択状態を復元
+        if (settings.spreadPdfSelected !== undefined) {
+            selectedOutputs.spreadPdf = settings.spreadPdfSelected;
+        }
+        if (settings.singlePdfSelected !== undefined) {
+            selectedOutputs.singlePdf = settings.singlePdfSelected;
+        }
+        if (settings.jpegSelected !== undefined) {
+            selectedOutputs.jpeg = settings.jpegSelected;
+        }
+        // 出力形式カードの選択状態を更新
+        document.querySelectorAll('.output-type-card').forEach(card => {
+            const type = card.dataset.type;
+            if (type === 'spread-pdf') {
+                card.classList.toggle('selected', selectedOutputs.spreadPdf);
+            } else if (type === 'single-pdf') {
+                card.classList.toggle('selected', selectedOutputs.singlePdf);
+            } else if (type === 'jpeg') {
+                card.classList.toggle('selected', selectedOutputs.jpeg);
+            }
+        });
+        // パネル表示を更新
+        updateOutputPanels();
 
         // タチキリ処理
         if (settings.tachikiriType) {
@@ -5838,6 +5867,11 @@ function setupSettingsAutoSave() {
         card.addEventListener('click', saveSettings);
     });
 
+    // 出力形式カードのクリックも監視
+    document.querySelectorAll('.output-type-card').forEach(card => {
+        card.addEventListener('click', saveSettings);
+    });
+
     console.log('設定の自動保存を有効化');
 
     // リセットボタン
@@ -5898,6 +5932,22 @@ function showConfirmModal(message, onConfirm) {
 function doResetSettings() {
     // localStorageから設定を削除
     localStorage.removeItem(SETTINGS_STORAGE_KEY);
+
+    // 出力形式の選択状態をデフォルトに戻す
+    selectedOutputs.spreadPdf = true;
+    selectedOutputs.singlePdf = false;
+    selectedOutputs.jpeg = false;
+    // カードの選択状態を更新
+    document.querySelectorAll('.output-type-card').forEach(card => {
+        const type = card.dataset.type;
+        if (type === 'spread-pdf') {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+    // パネル表示を更新
+    updateOutputPanels();
 
     // デフォルト値を適用
     const defaults = {
