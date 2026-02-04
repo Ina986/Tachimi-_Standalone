@@ -452,6 +452,7 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
 image = { version = "0.25", features = ["png", "jpeg", "gif", "webp"] }
 imageproc = "0.24"
 ab_glyph = "0.2"
@@ -464,6 +465,86 @@ rayon = "1.10"
 tokio = { version = "1", features = ["rt", "sync"] }
 ```
 
+## 自動更新機能
+
+### 概要
+
+GitHub Releases を使用した自動更新機能を実装。アプリ内から新バージョンを確認し、ダウンロード・インストールが可能。
+
+### 構成
+
+- **tauri-plugin-updater**: Tauri v2 の公式アップデータープラグイン
+- **GitHub Actions**: タグプッシュで自動ビルド・リリース作成
+- **署名**: minisign による更新ファイルの署名検証
+
+### ファイル構成
+
+```
+.github/workflows/release.yml   # GitHub Actions ワークフロー
+.tauri/
+├── tachimi.key                 # 秘密鍵（.gitignore で除外）
+└── tachimi.key.pub             # 公開鍵
+src-tauri/
+├── tauri.conf.json             # updater エンドポイント・公開鍵設定
+└── capabilities/default.json   # updater パーミッション
+```
+
+### tauri.conf.json 設定
+
+```json
+{
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Ina986/Tachimi-_Standalone/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6..."
+    }
+  }
+}
+```
+
+### capabilities/default.json パーミッション
+
+```json
+{
+  "permissions": [
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
+  ]
+}
+```
+
+### GitHub Secrets
+
+| Secret名 | 説明 |
+|----------|------|
+| `TAURI_SIGNING_PRIVATE_KEY` | 署名用秘密鍵（.tauri/tachimi.key の内容） |
+
+### リリース手順
+
+1. `tauri.conf.json` と `Cargo.toml` の `version` を更新
+2. コミット＆プッシュ
+3. タグを作成してプッシュ:
+   ```bash
+   git tag v1.0.x
+   git push origin v1.0.x
+   ```
+4. GitHub Actions が自動でビルド・リリース作成
+5. `latest.json` と署名付きインストーラーがリリースに追加される
+
+### フロントエンド実装
+
+設定モーダル（鍵アイコン）内に更新チェックUIを配置:
+- `checkForUpdate()`: 更新確認
+- `installUpdate()`: ダウンロード＆インストール
+- 更新完了後は自動再起動
+
+### GitHub リポジトリ
+
+https://github.com/Ina986/Tachimi-_Standalone
+
 ## 実装済みの改善
 
 - [x] 進捗オーバーレイ刷新（印刷工房デザイン、インクローラーバー、押印完了）
@@ -475,6 +556,8 @@ tokio = { version = "1", features = ["rt", "sync"] }
 - [x] JSONモーダル（検索・ナビゲーション機能）
 - [x] ルーラーベースガイドシステム
 - [x] ノンブルサイズ拡張（xlarge追加）
+- [x] 機能アンロック（パスワード保護、640:909比率固定）
+- [x] 自動更新機能（GitHub Releases + tauri-plugin-updater）
 
 ## 今後の改善候補
 
