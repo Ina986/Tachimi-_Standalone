@@ -5621,7 +5621,7 @@ async function execute() {
 // ========================================
 // 設定の永続化（localStorage）
 // ========================================
-const SETTINGS_STORAGE_KEY = 'tachimi_settings';
+const SETTINGS_STORAGE_KEY = 'tachimi_ui_settings';
 
 /**
  * 現在の設定をlocalStorageに保存
