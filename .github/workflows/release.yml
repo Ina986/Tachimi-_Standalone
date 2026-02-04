@@ -57,48 +57,5 @@ jobs:
             既存のバージョンがインストールされている場合は、自動更新機能でもアップデートできます。
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
-
-      - name: Get version from tag
-        id: get_version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-
-      - name: Read signature file
-        id: read_sig
-        shell: bash
-        run: |
-          SIG_FILE="src-tauri/target/release/bundle/nsis/Tachimi_${{ steps.get_version.outputs.VERSION }}_x64-setup.nsis.zip.sig"
-          if [ -f "$SIG_FILE" ]; then
-            SIGNATURE=$(cat "$SIG_FILE")
-            echo "SIGNATURE=$SIGNATURE" >> $GITHUB_OUTPUT
-          else
-            echo "Signature file not found: $SIG_FILE"
-            ls -la src-tauri/target/release/bundle/nsis/ || true
-          fi
-
-      - name: Create latest.json
-        shell: bash
-        run: |
-          cat > latest.json << EOF
-          {
-            "version": "${{ steps.get_version.outputs.VERSION }}",
-            "notes": "Tachimi ${{ github.ref_name }} リリース",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "windows-x86_64": {
-                "signature": "${{ steps.read_sig.outputs.SIGNATURE }}",
-                "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Tachimi_${{ steps.get_version.outputs.VERSION }}_x64-setup.nsis.zip"
-              }
-            }
-          }
-          EOF
-          cat latest.json
-
-      - name: Upload latest.json to release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: latest.json
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
