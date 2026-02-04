@@ -258,7 +258,7 @@ function hideFeatureUnlockModal() {
 // ========================================
 
 /**
- * アップデートを確認
+ * アップデートを確認（手動）
  */
 async function checkForUpdate() {
     const btn = $('btnCheckUpdate');
@@ -309,6 +309,139 @@ async function checkForUpdate() {
     } finally {
         btn.disabled = false;
         btn.classList.remove('checking');
+    }
+}
+
+/**
+ * 起動時の自動アップデートチェック
+ */
+async function checkForUpdateOnStartup() {
+    // 少し遅延させてアプリの初期化を待つ
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    try {
+        if (!window.__TAURI__?.updater) {
+            console.log('Updater not available (dev mode)');
+            return;
+        }
+
+        const { check } = window.__TAURI__.updater;
+        const update = await check();
+
+        if (update) {
+            console.log(`Update available: v${update.version}`);
+            window._pendingUpdate = update;
+
+            // 確認ダイアログを表示
+            const shouldUpdate = await showUpdateConfirmDialog(update.version);
+
+            if (shouldUpdate) {
+                await performAutoUpdate();
+            }
+        } else {
+            console.log('App is up to date');
+        }
+    } catch (error) {
+        console.error('Startup update check failed:', error);
+    }
+}
+
+/**
+ * 更新確認ダイアログを表示
+ */
+async function showUpdateConfirmDialog(version) {
+    return new Promise((resolve) => {
+        // カスタムダイアログを作成
+        const overlay = document.createElement('div');
+        overlay.className = 'update-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="update-dialog">
+                <div class="update-dialog-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </div>
+                <h3>新しいバージョンがあります</h3>
+                <p>v${version} が利用可能です。<br>今すぐアップデートしますか？</p>
+                <div class="update-dialog-buttons">
+                    <button class="btn-update-later">後で</button>
+                    <button class="btn-update-now">アップデート</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // アニメーション用
+        requestAnimationFrame(() => overlay.classList.add('visible'));
+
+        overlay.querySelector('.btn-update-later').onclick = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 300);
+            resolve(false);
+        };
+
+        overlay.querySelector('.btn-update-now').onclick = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 300);
+            resolve(true);
+        };
+    });
+}
+
+/**
+ * 自動アップデートを実行
+ */
+async function performAutoUpdate() {
+    if (!window._pendingUpdate) return;
+
+    // 進捗ダイアログを表示
+    const overlay = document.createElement('div');
+    overlay.className = 'update-dialog-overlay visible';
+    overlay.innerHTML = `
+        <div class="update-dialog">
+            <div class="update-dialog-icon updating">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                </svg>
+            </div>
+            <h3>アップデート中...</h3>
+            <p>ダウンロードしています。<br>しばらくお待ちください。</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    try {
+        await window._pendingUpdate.downloadAndInstall();
+
+        // 完了表示
+        overlay.querySelector('h3').textContent = 'インストール完了';
+        overlay.querySelector('p').textContent = 'アプリを再起動します...';
+        overlay.querySelector('.update-dialog-icon').classList.remove('updating');
+
+        // 再起動
+        if (window.__TAURI__?.process) {
+            const { relaunch } = window.__TAURI__.process;
+            setTimeout(async () => {
+                await relaunch();
+            }, 1500);
+        }
+    } catch (error) {
+        console.error('Auto update failed:', error);
+        overlay.querySelector('h3').textContent = 'アップデート失敗';
+        overlay.querySelector('p').textContent = error.message || 'エラーが発生しました';
+        overlay.querySelector('.update-dialog-icon').classList.remove('updating');
+
+        // 閉じるボタンを追加
+        const btnClose = document.createElement('button');
+        btnClose.className = 'btn-update-now';
+        btnClose.textContent = '閉じる';
+        btnClose.onclick = () => {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        overlay.querySelector('.update-dialog').appendChild(btnClose);
     }
 }
 
@@ -1574,6 +1707,9 @@ function setupEvents() {
     // 起動時の状態反映
     updateLockIcon();
     updateJsonRegisterButtonVisibility();
+
+    // 起動時の自動アップデートチェック
+    checkForUpdateOnStartup();
 }
 
 /**

@@ -6994,3 +6994,105 @@ input:focus, select:focus {
     background: #388E3C;
     box-shadow: 0 2px 8px rgba(46, 125, 50, 0.4);
 }
+
+/* ----- 自動アップデートダイアログ ----- */
+.update-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.update-dialog-overlay.visible {
+    opacity: 1;
+}
+
+.update-dialog {
+    background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 360px;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.update-dialog-overlay.visible .update-dialog {
+    transform: scale(1);
+}
+
+.update-dialog-icon {
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.update-dialog-icon.updating svg {
+    animation: spin 1s linear infinite;
+}
+
+.update-dialog h3 {
+    font-family: var(--font-ui);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 12px 0;
+}
+
+.update-dialog p {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--text2);
+    margin: 0 0 24px 0;
+    line-height: 1.6;
+}
+
+.update-dialog-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-update-later {
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-update-later:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text2);
+}
+
+.btn-update-now {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent) 0%, #0066cc 100%);
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-update-now:hover {
+    background: linear-gradient(135deg, #4dabff 0%, var(--accent) 100%);
+    box-shadow: 0 4px 12px rgba(26, 140, 255, 0.4);
+}
