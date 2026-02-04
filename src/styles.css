@@ -6619,6 +6619,9 @@ input:focus, select:focus {
     border-radius: 10px;
     width: 360px;
     max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow:
         0 24px 80px rgba(0, 0, 0, 0.7),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -6632,6 +6635,7 @@ input:focus, select:focus {
     padding: 14px 18px;
     background: linear-gradient(180deg, rgba(40, 40, 45, 0.95) 0%, rgba(25, 25, 30, 0.95) 100%);
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .feature-unlock-header h3 {
@@ -6667,6 +6671,12 @@ input:focus, select:focus {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.feature-unlock-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
 .feature-unlock-body {
     padding: 18px;
 }
@@ -6675,6 +6685,7 @@ input:focus, select:focus {
     padding: 10px 18px;
     border-top: 1px solid var(--border);
     text-align: center;
+    flex-shrink: 0;
 }
 
 .version-info {
@@ -6866,8 +6877,7 @@ input:focus, select:focus {
 
 /* ----- アップデートチェックセクション ----- */
 .update-check-section {
-    margin-top: 20px;
-    padding-top: 16px;
+    padding: 16px 18px 18px;
     border-top: 1px solid var(--border);
 }
 
