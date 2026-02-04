@@ -59,3 +59,13 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           updaterJsonPreferNsis: true
+          includeUpdaterJson: true
+
+      - name: Debug - List build artifacts
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Bundle directory ==="
+          find src-tauri/target/release/bundle -type f -name "*.json" -o -name "*.sig" 2>/dev/null || echo "No bundle directory"
+          echo "=== All nsis files ==="
+          ls -la src-tauri/target/release/bundle/nsis/ 2>/dev/null || echo "No nsis directory"
