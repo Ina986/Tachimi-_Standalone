@@ -11,45 +11,7 @@
   },
   "author": "Tachimi",
   "license": "MIT",
-  "dependencies": {
-    "pdf-lib": "^1.17.1",
-    "psd": "^3.4.0",
-    "sharp": "^0.33.2"
-  },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.9.6",
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1"
-  },
-  "build": {
-    "appId": "com.tachimi.standalone",
-    "productName": "タチミ",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "src/**/*",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "src/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerLanguages": [
-        "ja"
-      ],
-      "language": "1041"
-    },
-    "asar": true
+    "@tauri-apps/cli": "^2.9.6"
   }
 }
