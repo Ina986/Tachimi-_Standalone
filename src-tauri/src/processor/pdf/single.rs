@@ -59,6 +59,11 @@ pub fn generate_single_pdf(
     let nombre_font_size_pt = get_nombre_font_size_pt(nombre_size);
 
     for (i, filename) in files.iter().enumerate() {
+        // キャンセルチェック
+        if crate::CANCEL_FLAG.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("処理がキャンセルされました".to_string());
+        }
+
         // 進捗イベント発行
         let _ = app_handle.emit("progress", crate::ProgressPayload {
             current: i + 1,

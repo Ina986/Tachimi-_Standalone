@@ -72,6 +72,11 @@ pub fn generate_spread_pdf(
     let mut file_idx: i32 = if add_white_page { -1 } else { 0 };
 
     while (file_idx as usize) < total || (add_white_page && file_idx == -1) {
+        // キャンセルチェック
+        if crate::CANCEL_FLAG.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("処理がキャンセルされました".to_string());
+        }
+
         spread_index += 1;
         let current_file_idx = file_idx.max(0) as usize;
         let filename = files.get(current_file_idx).cloned().unwrap_or_default();

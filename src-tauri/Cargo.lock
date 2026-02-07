@@ -4370,7 +4370,7 @@ dependencies = [
 
 [[package]]
 name = "tachimi"
-version = "1.0.10"
+version = "1.0.19"
 dependencies = [
  "ab_glyph",
  "base64 0.22.1",

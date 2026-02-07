@@ -5351,6 +5351,40 @@ input:focus, select:focus {
     animation: machineSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* キャンセルボタン: 控えめな×、画面右下固定 */
+.cancel-processing-btn {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.3s ease, background 0.3s ease;
+    z-index: 10001;
+}
+.cancel-processing-btn svg {
+    width: 24px;
+    height: 24px;
+}
+.cancel-processing-btn:hover {
+    color: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.08);
+}
+.cancel-processing-btn:active {
+    transform: scale(0.9);
+}
+.processing-overlay.complete .cancel-processing-btn {
+    display: none;
+}
+
 @keyframes machineSlideIn {
     from {
         opacity: 0;

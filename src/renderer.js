@@ -545,6 +545,11 @@ const processingOverlay = {
         this.currentPercent = 0;
         this.targetPercent = 0;
         this.totalFiles = totalFiles;
+        this.cancelled = false;
+
+        // キャンセルボタン表示
+        const cancelBtn = $('cancelProcessingBtn');
+        if (cancelBtn) cancelBtn.style.display = 'flex';
 
         // UI初期化
         const percentEl = $('processingPercent');
@@ -581,6 +586,9 @@ const processingOverlay = {
         if (overlay) {
             overlay.style.display = 'none';
         }
+        // キャンセルボタン非表示
+        const cancelBtn = $('cancelProcessingBtn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
     },
 
     setPhase(phase) {
@@ -1413,6 +1421,19 @@ function setupEvents() {
     listen('progress', (event) => {
         updateProgress(event.payload);
     });
+
+    // 処理キャンセルボタン
+    $('cancelProcessingBtn').onclick = async () => {
+        if (!isProcessing) return;
+        try {
+            await invoke('cancel_processing');
+            processingOverlay.cancelled = true;
+            const btn = $('cancelProcessingBtn');
+            if (btn) btn.style.display = 'none';
+        } catch (e) {
+            console.error('キャンセル失敗:', e);
+        }
+    };
 
     // 画像選択モードのボタン
     $('btnApplyCrop').onclick = () => closeCropMode(true);
@@ -5521,6 +5542,20 @@ async function execute() {
 
             if (!tempFolderUsed) {
                 message += `画像処理完了: ${result.processed}/${result.total} ファイル\n`;
+            }
+
+            // キャンセルされた場合は処理を中断
+            const wasCancelled = processingOverlay.cancelled ||
+                (result.errors.length > 0 && result.errors[0].startsWith('処理がキャンセルされました'));
+            if (wasCancelled) {
+                if (tempFolderUsed) {
+                    try { await invoke('delete_folder', { path: actualOutputFolder }); } catch(e) {}
+                }
+                const cancelMsg = result.errors[0] || '処理がキャンセルされました';
+                $('modalMessage').textContent = cancelMsg;
+                $('modal').style.display = 'flex';
+                setStatus('キャンセルされました');
+                return;
             }
 
             if (result.errors.length > 0) {

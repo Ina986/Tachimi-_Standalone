@@ -5,9 +5,12 @@ use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::Emitter;
+
+/// 処理キャンセル用のグローバルフラグ
+static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// 並列処理のスレッドプールを初期化
 /// CPUコア数の2倍のスレッドを使用（I/O待ち時間を活用）
@@ -111,6 +114,14 @@ async fn get_image_preview_as_file(
     result
 }
 
+/// 処理をキャンセル
+#[tauri::command]
+async fn cancel_processing() -> Result<(), String> {
+    CANCEL_FLAG.store(true, Ordering::SeqCst);
+    println!("処理キャンセルが要求されました");
+    Ok(())
+}
+
 /// 画像を処理（クロップ、タチキリ処理）
 #[tauri::command]
 async fn process_images(
@@ -120,6 +131,9 @@ async fn process_images(
     files: Vec<String>,
     options: ProcessOptions,
 ) -> Result<ProcessResult, String> {
+    // キャンセルフラグをリセット
+    CANCEL_FLAG.store(false, Ordering::SeqCst);
+
     // 入力バリデーション
     if files.is_empty() {
         return Err("処理するファイルが選択されていません".to_string());
@@ -151,6 +165,11 @@ async fn process_images(
     // rayon並列処理で複数ファイルを同時処理
     // enumerate()でインデックスを取得してノンブル用のページ番号に使用
     files.par_iter().enumerate().for_each(|(index, filename)| {
+        // キャンセルチェック
+        if CANCEL_FLAG.load(Ordering::Relaxed) {
+            return;
+        }
+
         // 処理開始を通知
         let started = in_progress.fetch_add(1, Ordering::SeqCst) + 1;
         let done = processed.load(Ordering::SeqCst);
@@ -209,6 +228,17 @@ async fn process_images(
             }
         }
     });
+
+    // キャンセルされた場合は早期リターン
+    if CANCEL_FLAG.load(Ordering::Relaxed) {
+        let done = processed.load(Ordering::SeqCst);
+        return Ok(ProcessResult {
+            processed: done,
+            total,
+            errors: vec![format!("処理がキャンセルされました ({}/{}完了)", done, total)],
+            output_folder: output_folder.clone(),
+        });
+    }
 
     // Mutexからエラーリストを取得（poisonedの場合は空リストを返す）
     let error_list = errors.into_inner().unwrap_or_else(|poisoned| {
@@ -518,6 +548,7 @@ pub fn run() {
             get_image_preview,
             get_image_preview_as_file,
             process_images,
+            cancel_processing,
             generate_pdf,
             get_default_output_folder,
             open_folder,

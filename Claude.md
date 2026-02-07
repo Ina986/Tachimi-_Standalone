@@ -16,9 +16,13 @@
 ```
 tachimi_standalone/
 ├── src/                              # フロントエンド
-│   ├── index.html                    # メインHTML (720行)
-│   ├── renderer.js                   # メインロジック (4,811行)
-│   ├── styles.css                    # スタイル (5,634行)
+│   ├── index.html                    # メインHTML (~900行)
+│   ├── renderer.js                   # メインロジック (~6,100行)
+│   ├── styles.css                    # スタイル (~7,400行)
+│   ├── styles/                       # 分離済みCSS
+│   │   ├── main.css                  # スタイルエントリ
+│   │   ├── utilities/variables.css   # CSS変数
+│   │   └── components/drop-zone.css  # ドロップゾーン
 │   └── js/                           # ES Modules
 │       ├── main.js                   # モジュールエントリポイント
 │       ├── core/
@@ -34,25 +38,25 @@ tachimi_standalone/
 │           └── storage.js            # LocalStorage管理
 ├── src-tauri/                        # Rustバックエンド
 │   ├── src/
-│   │   ├── main.rs                   # エントリ (183行)
-│   │   ├── lib.rs                    # Tauriコマンド定義 (466行)
+│   │   ├── main.rs                   # エントリ (6行)
+│   │   ├── lib.rs                    # Tauriコマンド定義 (~550行)
 │   │   └── processor/                # 画像処理モジュール群
 │   │       ├── mod.rs                # モジュールエクスポート (160行)
-│   │       ├── types.rs              # 型定義 (152行)
+│   │       ├── types.rs              # 型定義 (153行)
 │   │       ├── cache.rs              # PSD/フォントキャッシュ (116行)
 │   │       ├── image_loader.rs       # 画像読み込み (343行)
 │   │       ├── image_processing.rs   # 画像処理 (338行)
 │   │       ├── jpeg.rs               # MozJPEGエンコード (111行)
 │   │       └── pdf/                  # PDF生成
 │   │           ├── mod.rs            # PDFモジュール (10行)
-│   │           ├── common.rs         # PDF共通処理 (345行)
-│   │           ├── single.rs         # 単ページPDF (156行)
-│   │           └── spread.rs         # 見開きPDF (256行)
+│   │           ├── common.rs         # PDF共通処理 (365行)
+│   │           ├── single.rs         # 単ページPDF (157行)
+│   │           └── spread.rs         # 見開きPDF (257行)
 │   ├── capabilities/
 │   │   └── default.json              # パーミッション設定
 │   ├── Cargo.toml
 │   └── tauri.conf.json               # Tauri設定
-├── タチミ起動.bat                     # npm start を実行
+├── Tachimi起動.bat                    # npm start を実行
 └── package.json
 ```
 
@@ -64,6 +68,7 @@ tachimi_standalone/
 | `get_image_preview` | Base64形式でプレビュー取得（PSD高速読み込み+キャッシュ対応） |
 | `get_image_preview_as_file` | ファイル経由でプレビュー取得（高速） |
 | `process_images` | 画像処理（クロップ・タチキリ・リサイズ・ノンブル） |
+| `cancel_processing` | 処理キャンセル（AtomicBoolフラグを設定） |
 | `generate_pdf` | 単ページ/見開きPDF生成（余白・ノンブル対応） |
 | `open_folder` | エクスプローラーでフォルダを開く |
 | `delete_folder` | フォルダを削除 |
@@ -71,6 +76,10 @@ tachimi_standalone/
 | `list_json_files` | JSONファイル一覧取得（レガシー互換） |
 | `list_folder_contents` | サブフォルダとJSONファイル一覧取得 |
 | `search_json_folders` | JSONファイル全文検索（Label/Title.json構造） |
+| `save_json_file` | JSONファイル保存 |
+| `read_json_file` | JSONファイル読み込み |
+| `ensure_folder_exists` | フォルダ作成（存在しなければ） |
+| `file_exists` | ファイル存在確認 |
 
 ## フロントエンド
 
@@ -96,7 +105,7 @@ let selectedOutputs = { spreadPdf: true, singlePdf: false, jpeg: false };
 ### 主要な関数
 
 - `setupEvents()` - イベントリスナー設定
-- `execute()` - メイン処理実行
+- `execute()` - メイン処理実行（キャンセル対応）
 - `updateFileInfo()` - ファイル情報表示更新
 - `updateProgress(data)` - 進捗表示更新
 - `handleDroppedPaths(paths)` - ドラッグ＆ドロップ処理
@@ -105,48 +114,39 @@ let selectedOutputs = { spreadPdf: true, singlePdf: false, jpeg: false };
 - `updateSpreadNombreHint()` - 見開きPDFのノンブルヒント更新（余白有無で切替）
 - `updateOutputNameFromFolder()` - 入力フォルダ名から出力ファイル名を自動設定
 
-### 進捗オーバーレイ（印刷工房デザイン）
+### 進捗オーバーレイ（Tachimiアニメーション）
 
 `processingOverlay` オブジェクトで制御:
-- `show(totalFiles)` - 表示開始、経過時間タイマー開始
-- `hide()` - 非表示、アニメーション・タイマー停止
+- `show(totalFiles)` - 表示開始、経過時間タイマー開始、キャンセルボタン表示
+- `hide()` - 非表示、アニメーション・タイマー停止、キャンセルボタン非表示
 - `setPhase(phase)` - フェーズ切替（prepare/process/pdf/complete）
 - `updateDisplay(current, total, filename, inProgress)` - 進捗更新
-- `startAnimation()` / `stopAnimation()` - インクバーのスムーズアニメーション
-- `startElapsedTimer()` / `stopElapsedTimer()` - 経過時間表示
-- `formatTime(ms)` - 時間フォーマット（m:ss形式）
+- `startAnimation()` / `stopAnimation()` - プログレスバーのスムーズアニメーション
+- `cancelled` - キャンセル状態フラグ
 
-**進捗表示の設計思想: 「印刷工房」**
-- **印刷機パネル風UI** → ダークメタリックなコントロールパネル
-- **インクローラー進捗バー** → 両端にローラー、青いインクが広がる表現
-- **工程ステップ表示** → 準備→変換→製本→完了の4段階
-- **7セグ風ディスプレイ** → モノスペースフォントでパーセント表示
-- **完了時の押印エフェクト** → 赤い印鑑がスタンプされるアニメーション
-- **経過時間表示** → 処理時間をリアルタイム表示
+**進捗表示の設計思想:**
+- **Tachimiストロークアニメーション** → SVGテキストが1文字ずつ描画→グロー→フェードアウトのループ
+- **極細プログレスライン** → シアンのグラデーション、Cormorant Garamond italicでパーセント表示
+- **キャンセルボタン** → 画面右下に固定（position: fixed）、控えめな×ボタン（通常はほぼ透明、ホバーで表示）
+- **完了チェックマーク** → ローズ色のストローク描画アニメーション
 
 ## バックエンド
 
-### Rustモジュール構成
+### 処理キャンセル機構
 
-```
-processor/
-├── mod.rs              # モジュールエクスポート
-├── types.rs            # 構造体定義（ProcessOptions, PdfOptions等）
-├── cache.rs            # PSD/フォントキャッシュ管理
-├── image_loader.rs     # 画像読み込み（PSD高速読み込み含む）
-├── image_processing.rs # 画像処理（クロップ、タチキリ、ノンブル）
-├── jpeg.rs             # MozJPEGエンコード
-└── pdf/
-    ├── mod.rs          # PDFモジュール
-    ├── common.rs       # PDF共通ユーティリティ
-    ├── single.rs       # 単ページPDF生成
-    └── spread.rs       # 見開きPDF生成
-```
+`CANCEL_FLAG: AtomicBool` をグローバルに配置:
+- `cancel_processing` コマンドで `true` に設定
+- `process_images` 開始時に `false` にリセット
+- rayonループ内で各ファイル処理前にチェック → `return`でスキップ
+- PDF生成ループ内でもチェック → `Err`で中断
+- キャンセル時は `ProcessResult` に「処理がキャンセルされました」メッセージを含めて返す
 
 ### 画像処理パイプライン
 
 ```
 Input File
+    ↓
+[Cancel Check] → キャンセル時はスキップ
     ↓
 [Load Image] → PSD cache check → PSD fast-load OR 標準読み込み
     ↓
@@ -218,20 +218,6 @@ pub struct PdfOptions {
 }
 ```
 
-### WorkInfo 構造体
-
-```rust
-pub struct WorkInfo {
-    pub label: String,        // レーベル名
-    pub author_type: u8,      // 0=単独, 1=分離, 2=そのまま
-    pub author1: String,      // 作画
-    pub author2: String,      // 原作
-    pub title: String,        // タイトル
-    pub subtitle: String,     // サブタイトル
-    pub version: String,      // 巻数
-}
-```
-
 ### ノンブルサイズ
 
 | サイズ | 画像焼き込み（余白なし時） | PDF余白（余白あり時） |
@@ -261,55 +247,21 @@ JPEG出力のみの場合:
 1. **フラット化画像の直接読み込み** (`load_psd_composite`)
    - PSDファイルのImage Dataセクション（保存時に生成される合成済み画像）を直接読み取る
    - レイヤー合成をスキップし、10倍以上の高速化を実現
-   - Photoshopの「互換性を最大に」オプションで保存されたPSDに対応
 
 2. **フォールバック** (`load_psd_with_layers`)
    - フラット化画像が読めない場合は従来のpsd crateでレイヤー合成
 
 ### キャッシュ機構
 
-**PSDキャッシュ:**
-- 最大10ファイルをメモリキャッシュ
-- フォルダ切り替え時に自動クリア
-- `clear_psd_cache` コマンドで手動クリアも可能
-
-**フォントキャッシュ:**
-- `OnceLock`によるシングルインスタンス（スレッドセーフ）
-- 日本語フォント検索（Yu Gothic, Meiryo, MS Gothic）
-
-### 対応形式
-
-- 圧縮方式: Raw (非圧縮)、RLE (PackBits)
-- カラーモード: RGB、Grayscale
-- ビット深度: 8bit
+- PSDキャッシュ: 最大10ファイル、フォルダ切り替え時に自動クリア
+- フォントキャッシュ: `OnceLock`によるスレッドセーフなシングルインスタンス
 
 ## 並列処理
 
-- `rayon` で画像処理を並列化
+- `rayon` で画像処理を並列化（キャンセル対応）
 - スレッド数: CPUコア数 × 2（最大32）
 - 進捗は `AtomicUsize` でスレッドセーフに管理
-
-## 進捗イベント
-
-```rust
-ProgressPayload {
-    current: usize,      // 完了数
-    total: usize,        // 合計
-    filename: String,    // 処理中ファイル名
-    phase: String,       // フェーズ表示
-    in_progress: usize,  // 現在処理中のファイル数
-}
-```
-
-## ドラッグ＆ドロップ
-
-Tauri v2のネイティブイベントを使用:
-- `tauri://drag-enter`
-- `tauri://drag-over`
-- `tauri://drag-leave`
-- `tauri://drag-drop`
-
-`tauri.conf.json` で `dragDropEnabled: true` が必要。
+- キャンセルは `AtomicBool` フラグで制御
 
 ## 開発コマンド
 
@@ -328,105 +280,70 @@ npm run tauri build --debug  # デバッグビルド
 
 ## UI/UX
 
-### デザイン方針: 「印刷工房」- 職人的な洗練
+### デザイン方針: ダークテーマ + ローズアクセント
 
-漫画原稿処理ツールとして、印刷・製本の世界観を取り入れた職人的なダークUIを採用。
+漫画原稿処理ツールとして、ダークUIにブラッシュローズのアクセントカラーを採用。
 
-**チェックボックス「押印」スタイル:**
-- インセットシャドウで「押す」ような深みを表現
-- チェック時は赤い印鑑グラデーション（#c41e3a → #8b0000）
-- `stampIn`アニメーションで印を押すような動き
+### カラースキーム
 
-**スライダー「精密ダイヤル」スタイル:**
-- トラック: 青グラデーション + 深いインセットシャドウ
-- サム: 金属的な放射状グラデーション（メタリックシルバー）
-- ホバー時に光沢増加 + 青いグロー
+```css
+/* 背景 */
+--bg-deep: #0a0a0d;
+--bg: #131316;
+--bg2: #1c1c21;
+--bg3: #26262d;
 
-**レイアウト「コントロールパネル」スタイル:**
-- スライダーグループ: ダークグラデーション背景 + 上部に青いアクセントライン
-- オプション行: 個別カード化、チェック時に赤いグロー
-- 数値表示: 白文字 + 青いテキストシャドウで強調
+/* テキスト */
+--text: #e8e8ec;
+--text2: #a0a0a8;
+--text3: #606068;
 
-**プレビューエリア:**
-- 中央から広がる微細な青いグラデーション背景
-- 深い多層シャドウで浮遊感
-- ホバー時に上昇 + グロー効果
+/* アクセント: ブラッシュローズ */
+--accent: #a0787e;
+--accent2: #d4a8b0;
+
+/* 朱色 */
+--vermillion: #c41e3a;
+
+/* ボーダー */
+--border: #3a3a42;
+```
+
+### コンテキスト別カラー
+
+| コンテキスト | カラー | 用途 |
+|-------------|--------|------|
+| グローバル | rose #a0787e / #d4a8b0 | メインアクセント |
+| チェックボックス | slate blue #7088a0 / #4e6478 | 選択状態 |
+| クロップモード | blue #1565c0 / #2196f3 | スコープオーバーライド |
+| アラートOKボタン | blue #1565c0 | 個別オーバーライド |
+| クロップ適用 | vermillion #c41e3a | 適用ボタン |
+| JSON UI | rose (globalから継承) | JSON関連パネル |
+| Tachimiアニメーション | rose #d4a8b0 / cream #fde8ec | ストローク＋グロー |
+| 完了チェックマーク | rose #d4a8b0 | 完了アニメーション |
+| ファイル選択チェック | mint #5ec6a4 | ファイル読込状態 |
+| クロップ完了ステップ | gold #c9a55c | 完了済みステップ |
 
 ### クロップモード
 
 - フルスクリーンルーラーベースの画像プレビュー
 - ルーラー上でドラッグしてガイド作成
-- フローティングガイドアクションボタン
 - LED風の数値入力フィールド
 - ページナビゲーション（前/次ボタン）
+- Undo/Redo対応（最大50履歴）
 
 ### JSONセレクションモーダル
 
 - リアルタイムフィルタリング付き検索入力
 - フォルダナビゲーション付きファイルブラウザ
-- 階層的なLabel/Title表示
-- ローカルファイルピッカー用「Browse」ボタン
-
-### ドロップゾーン
-
-- 固定サイズ（110px）で読み込み状態でもサイズ変化なし
-- 空状態/読み込み済み状態で表示を切替
-- クリアボタンで入力をリセット
-
-### 出力設定
-
-- 出力パスは省略表示（先頭...末尾）+ ツールチップでフルパス
-- 出力ファイル名は入力フォルダ名から自動設定
-- 手動編集可能
-
-### 出力タイプカード
-
-- 見開きPDF / 単ページPDF / JPEG の3種類
-- 複数選択可能
-- 選択時は文字・アイコンが白に変化（青くならない）
-
-### ノンブル設定ヒント
-
-各パネルにノンブル配置場所の説明を表示:
-- 見開きPDF: 「※ 余白有効時はPDF余白に追加」（余白OFF時は動的に更新）
-- 単ページPDF: 「※ 有効時はPDF下部に余白を追加」
-- JPEG: 「※ 画像下部に追加（タチキリ領域内）」
+- JSON新規登録/既存追加（パスワードロック）
 
 ## 注意事項
 
 - `targetFiles` はファイル名のみ格納（フルパスではない）
 - PDFソースは処理後JPEGの場合 `/jpg` サブフォルダを参照する必要あり
 - ノンブル設定は各パネル間で自動同期される
-
-## CSS変数
-
-```css
---bg: #1a1a1a;
---bg2: #222;
---bg3: #2a2a2a;
---text: #fff;
---text2: #ccc;
---text3: #888;
---accent: #1a8cff;
---accent2: #4dabff;
---border: #333;
-```
-
-### 主要なUIコンポーネント（styles.css内）
-
-| コンポーネント | クラス | 特徴 |
-|---------------|--------|------|
-| チェックボックス | `.checkbox-sm` | 押印スタイル、赤グラデーション |
-| スライダー | `.slider-sm` | 精密ダイヤル、メタリックサム |
-| スライダーグループ | `.toggle-slider-group` | コントロールパネル風 |
-| オプション行 | `.spread-options-row` | カード化されたチェックボックス |
-| ノンブル設定 | `.spread-nombre-section` | ダークパネル |
-| プレビューエリア | `.spread-preview-area` | 青グラデーション背景 |
-| 印刷機パネル | `.print-machine` | ダークメタリック、インセットシャドウ |
-| インクローラー | `.ink-roller-container` | 青いインクバー、両端にローラー |
-| 工程ステップ | `.process-steps` | 準備→変換→製本→完了 |
-| 押印完了 | `.stamp-complete` | 赤い印鑑、スタンプアニメーション |
-| 経過時間 | `.time-display` | モノスペースフォント表示 |
+- `JSON_FOLDER_PATH` は `G:/共有ドライブ/...` にハードコードされている
 
 ## 依存関係
 
@@ -434,16 +351,12 @@ npm run tauri build --debug  # デバッグビルド
 
 ```json
 {
-  "dependencies": {
-    "pdf-lib": "^1.17.1",
-    "psd": "^3.4.0",
-    "sharp": "^0.33.2"
-  },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.6"
   }
 }
 ```
+（ランタイム依存なし、フレームワークなし）
 
 ### Rust (Cargo.toml)
 
@@ -463,135 +376,32 @@ printpdf = "0.7"
 base64 = "0.22"
 walkdir = "2"
 rayon = "1.10"
+dirs = "5"
 tokio = { version = "1", features = ["rt", "sync"] }
+```
+
+### devプロファイル最適化
+
+```toml
+[profile.dev]
+opt-level = 2  # 画像処理を5-10倍高速化
+
+[profile.dev.package.image]
+opt-level = 3
+# ... 他の画像/PDF系crateも同様
 ```
 
 ## 自動更新機能
 
-### 概要
-
-GitHub Releases を使用した自動更新機能を実装。アプリ内から新バージョンを確認し、ダウンロード・インストールが可能。
-
-### 構成
-
-- **tauri-plugin-updater**: Tauri v2 の公式アップデータープラグイン
-- **GitHub Actions**: タグプッシュで自動ビルド・リリース作成
-- **署名**: minisign による更新ファイルの署名検証
-
-### ファイル構成
-
-```
-.github/workflows/release.yml   # GitHub Actions ワークフロー
-.tauri/
-├── tachimi.key                 # 秘密鍵（.gitignore で除外）
-└── tachimi.key.pub             # 公開鍵
-src-tauri/
-├── tauri.conf.json             # updater エンドポイント・公開鍵設定
-└── capabilities/default.json   # updater パーミッション
-```
-
-### tauri.conf.json 設定
-
-```json
-{
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/Ina986/Tachimi-_Standalone/releases/latest/download/latest.json"
-      ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6..."
-    }
-  },
-  "bundle": {
-    "createUpdaterArtifacts": true  // ← 必須！これがないと署名ファイルが生成されない
-  }
-}
-```
-
-### capabilities/default.json パーミッション
-
-```json
-{
-  "permissions": [
-    "updater:default",
-    "updater:allow-check",
-    "updater:allow-download-and-install"
-  ]
-}
-```
-
-### GitHub Secrets
-
-| Secret名 | 説明 |
-|----------|------|
-| `TAURI_SIGNING_PRIVATE_KEY` | 署名用秘密鍵（.tauri/tachimi.key の内容、1行で） |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 秘密鍵のパスワード |
-
-### 署名鍵の生成
-
-```bash
-npx tauri signer generate -w .tauri/tachimi.key
-```
-- パスワード入力時は画面に何も表示されない（正常動作）
-- 公開鍵（.key.pub）の内容を tauri.conf.json の pubkey に設定
-
-### リリースに含まれるべきファイル
-
-| ファイル | 用途 |
-|---------|------|
-| `Tachimi_x.x.x_x64-setup.exe` | 新規インストール用 |
-| `Tachimi_x.x.x_x64-setup.nsis.zip` | 自動更新用バンドル |
-| `Tachimi_x.x.x_x64-setup.nsis.zip.sig` | 署名検証用 |
-| `latest.json` | 更新マニフェスト |
+GitHub Releases + tauri-plugin-updater + minisign署名。
+詳細は `tauri.conf.json` の `plugins.updater` と `.github/workflows/release.yml` を参照。
 
 ### リリース手順
 
-1. `tauri.conf.json` の `version` を更新
+1. `tauri.conf.json` と `Cargo.toml` の `version` を更新
 2. コミット＆プッシュ
-3. タグを作成してプッシュ:
-   ```bash
-   git tag v1.0.x
-   git push origin main
-   git push origin v1.0.x
-   ```
+3. タグを作成してプッシュ: `git tag v1.0.x && git push origin main && git push origin v1.0.x`
 4. GitHub Actions が自動でビルド・リリース作成
-5. 上記4ファイルがリリースに追加されることを確認
-
-### セキュリティ設定（tauri.conf.json）
-
-```json
-{
-  "app": {
-    "security": {
-      "csp": "default-src 'self'; connect-src 'self' https://github.com https://api.github.com https://*.githubusercontent.com; img-src 'self' asset: http://asset.localhost https://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
-      "assetProtocol": {
-        "enable": true,
-        "scope": ["$TEMP/**", "$LOCALAPPDATA/**", "$DESKTOP/**", "$DOCUMENT/**", "$HOME/**", "$DOWNLOAD/**", "G:/**"]
-      }
-    }
-  }
-}
-```
-
-**CSP設定のポイント:**
-- `connect-src`: アップデーター用にGitHub関連URLを許可
-- `img-src`: `http://asset.localhost`と`https://asset.localhost`の両方を許可（Tauri内部プロトコル）
-
-**assetProtocol.scope**: ファイル読み込み可能なディレクトリを指定
-
-### トラブルシューティング
-
-- **`latest.json` が生成されない**: `createUpdaterArtifacts: true` を確認
-- **署名エラー**: GitHub Secrets の秘密鍵とパスワードを確認
-- **署名キー不一致エラー**: 鍵を変更した場合、旧バージョンからは手動更新が必要
-- **CSPエラー（画像読み込み失敗）**: `img-src`に`http://asset.localhost`があるか確認
-
-### フロントエンド実装
-
-設定モーダル（鍵アイコン）内に更新チェックUIを配置:
-- `checkForUpdate()`: 更新確認
-- `installUpdate()`: ダウンロード＆インストール
-- 更新完了後は自動再起動
 
 ### GitHub リポジトリ
 
@@ -599,26 +409,25 @@ https://github.com/Ina986/Tachimi-_Standalone
 
 ## 実装済みの改善
 
-- [x] 進捗オーバーレイ刷新（印刷工房デザイン、インクローラーバー、押印完了）
-- [x] UIデザイン刷新（押印チェックボックス、精密ダイヤルスライダー）
+- [x] 進捗オーバーレイ刷新（Tachimiストロークアニメーション）
+- [x] UIデザイン刷新（ダークテーマ + ローズアクセント）
 - [x] Rustモジュール分割（processor/配下へ整理）
 - [x] ES Modulesシステム（src/js/）
 - [x] PSD高速読み込み（フラット化画像直接読み取り）
 - [x] フォントキャッシュシステム
-- [x] JSONモーダル（検索・ナビゲーション機能）
+- [x] JSONモーダル（検索・ナビゲーション・新規登録機能）
 - [x] ルーラーベースガイドシステム
 - [x] ノンブルサイズ拡張（xlarge追加）
 - [x] 機能アンロック（パスワード保護、640:909比率固定）
 - [x] 自動更新機能（GitHub Releases + tauri-plugin-updater）
-- [x] リリースビルドでDevTools有効化（devtools feature flag）
-- [x] CSP/assetProtocol設定の最適化（v1.0.15）
-- [x] 見開きPDF余白なし時のノンブル二重表示バグ修正（`||` → `??` でfalsy 0対策）
-- [x] 余白なし時の画像ノンブルサイズを半分に縮小（断ち切り枠内用）
+- [x] CSP/assetProtocol設定の最適化
 - [x] PDF出力の同名ファイル自動連番（上書き防止）
+- [x] バッチ処理のキャンセル機能（AtomicBoolフラグ + 控えめな×ボタン）
 
 ## 今後の改善候補
 
 - [ ] プリセット保存/読み込み機能
-- [ ] バッチ処理のキャンセル機能
 - [ ] 処理履歴の表示
 - [ ] 設定のエクスポート/インポート
+- [ ] renderer.jsの段階的モジュール分割
+- [ ] テスト基盤の構築
