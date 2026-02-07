@@ -6,7 +6,7 @@
 
 ## 技術スタック
 
-- **フロントエンド**: HTML/CSS/JavaScript（フレームワークなし、ES Modules対応）
+- **フロントエンド**: HTML/CSS/JavaScript（フレームワークなし、完全ES Modules化）
 - **バックエンド**: Rust + Tauri v2
 - **画像処理**: image crate, imageproc, ab_glyph（フォント描画）, psd crate, mozjpeg
 - **PDF生成**: printpdf crate
@@ -17,29 +17,45 @@
 tachimi_standalone/
 ├── src/                              # フロントエンド
 │   ├── index.html                    # メインHTML (~900行)
-│   ├── renderer.js                   # メインロジック (~6,100行)
 │   ├── styles.css                    # スタイル (~7,400行)
 │   ├── styles/                       # 分離済みCSS
 │   │   ├── main.css                  # スタイルエントリ
 │   │   ├── utilities/variables.css   # CSS変数
 │   │   └── components/drop-zone.css  # ドロップゾーン
-│   └── js/                           # ES Modules
-│       ├── main.js                   # モジュールエントリポイント
+│   └── js/                           # ES Modules（全ロジック）
+│       ├── main.js                   # エントリポイント（初期化・window公開）
 │       ├── core/
+│       │   ├── app-state.js          # 共有ミュータブル状態（旧グローバル変数）
 │       │   ├── state.js              # StateStoreクラス（状態管理）
 │       │   ├── events.js             # EventBusクラス（イベント通信）
 │       │   └── tauri-api.js          # Tauri v2 APIラッパー
 │       ├── ui/
-│       │   ├── overlay.js            # ProcessingOverlay
-│       │   └── alerts.js             # ダイアログユーティリティ
-│       └── utils/
-│           ├── dom.js                # DOM操作ヘルパー
-│           ├── formatters.js         # フォーマット関数
-│           └── storage.js            # LocalStorage管理
+│       │   ├── overlay.js            # ProcessingOverlay（キャンセル対応）
+│       │   ├── alerts.js             # ダイアログユーティリティ
+│       │   └── loading-overlay.js    # ロード中タイマーオーバーレイ
+│       ├── utils/
+│       │   ├── dom.js                # DOM操作ヘルパー
+│       │   ├── formatters.js         # フォーマット関数
+│       │   └── storage.js            # LocalStorage管理
+│       └── features/
+│           ├── constants.js          # 定数定義
+│           ├── undo-redo.js          # Undo/Redo（コールバック登録パターン）
+│           ├── feature-unlock.js     # 機能アンロック（パスワード保護）
+│           ├── update-system.js      # 自動更新
+│           ├── file-handling.js      # ファイルD&D・選択・出力先管理
+│           ├── json-parsing.js       # JSON解析・適用
+│           ├── json-modal.js         # JSONセレクションモーダル
+│           ├── json-register.js      # JSON登録・保存
+│           ├── output-panels.js      # 出力形式パネル（見開き/単/JPEG）
+│           ├── preview.js            # プレビュー表示・ページナビ
+│           ├── guides.js             # ルーラー・ガイド管理
+│           ├── crop-mode.js          # クロップモード全体（最大モジュール）
+│           ├── execution.js          # 処理実行・進捗管理
+│           └── settings.js           # 設定保存・読み込み・リセット
 ├── src-tauri/                        # Rustバックエンド
 │   ├── src/
 │   │   ├── main.rs                   # エントリ (6行)
-│   │   ├── lib.rs                    # Tauriコマンド定義 (~550行)
+│   │   ├── lib.rs                    # Tauriコマンド定義 (~560行)
 │   │   └── processor/                # 画像処理モジュール群
 │   │       ├── mod.rs                # モジュールエクスポート (160行)
 │   │       ├── types.rs              # 型定義 (153行)
@@ -85,34 +101,29 @@ tachimi_standalone/
 
 ### アーキテクチャ
 
-**ES Modules（src/js/）**
-- `StateStore` - ドット記法パスによる状態管理、リアクティブな購読機能
-- `EventBus` - モジュール間の疎結合なイベント通信
+**完全ES Modules化（src/js/）**
+- `main.js` - エントリポイント。全モジュールimport → Tauri API初期化 → window公開 → setupEvents呼び出し
+- `core/app-state.js` - 共有ミュータブル状態（旧renderer.jsグローバル変数の1:1マッピング）
+- `features/` - 機能別モジュール（各モジュールが `setupXxxEvents()` をexport）
+- `StateStore` / `EventBus` - リアクティブ状態管理・イベント通信
 - `tauri-api.js` - Tauri v2 APIの統一ラッパー
 
-**レガシー（renderer.js）**
-- メインロジック（段階的移行中）
+### モジュール間通信パターン
 
-### グローバル変数
+- **共有状態**: `appState` オブジェクト（`core/app-state.js`）を各モジュールがimport
+- **クロスモジュール呼び出し**: `main.js` が全関数を `window.*` に公開、各モジュールは `if (typeof window.xxx === 'function') window.xxx()` で呼び出し
+- **循環依存回避**: `undo-redo.js` は `onRestore()` コールバック登録パターンで crop-mode の関数を呼ぶ。`guides.js` は `crop-mode.js` をimportしない
+- **初期化順序**: Tauri API → window公開 → onRestore登録 → 全setupEvents → loadSettings → デフォルト出力フォルダ
 
-```javascript
-let inputFolder = null;      // 入力フォルダパス
-let targetFiles = [];        // ファイル名配列（パスではない）
-let outputFolder = null;     // 出力先フォルダ
-let selectedOutputs = { spreadPdf: true, singlePdf: false, jpeg: false };
-```
+### 主要な関数（モジュール別）
 
-### 主要な関数
-
-- `setupEvents()` - イベントリスナー設定
-- `execute()` - メイン処理実行（キャンセル対応）
-- `updateFileInfo()` - ファイル情報表示更新
-- `updateProgress(data)` - 進捗表示更新
-- `handleDroppedPaths(paths)` - ドラッグ＆ドロップ処理
-- `collectSettings()` - 設定値を収集
-- `syncNombreSettings(source)` - ノンブル設定を各パネル間で同期
-- `updateSpreadNombreHint()` - 見開きPDFのノンブルヒント更新（余白有無で切替）
-- `updateOutputNameFromFolder()` - 入力フォルダ名から出力ファイル名を自動設定
+- `execution.js`: `execute()`, `collectSettings()`, `updateProgress()`
+- `file-handling.js`: `handleDroppedPaths()`, `updateFileInfo()`, `updateOutputInfo()`
+- `output-panels.js`: `setupPresetCards()`, `updateOutputPanels()`, `syncNombreSettings()`
+- `preview.js`: `updateSpreadPreview()`, `loadPreviewImageByIndex()`
+- `crop-mode.js`: `openCropMode()`, `closeCropMode()`, `updateSelectionVisual()`
+- `guides.js`: `drawRulers()`, `renderGuides()`, `addGuide()`, `removeGuide()`
+- `settings.js`: `loadSettings()`, `saveSettings()`, `resetSettings()`
 
 ### 進捗オーバーレイ（Tachimiアニメーション）
 
@@ -274,9 +285,11 @@ npm run tauri build --debug  # デバッグビルド
 ## 出力パス規則
 
 - JPEG: `outputFolder/jpg/` サブフォルダ
+  - 既存フォルダがある場合は自動で連番付与: `jpg(1)/`, `jpg(2)/`, ...
 - PDF用一時JPEG: `outputFolder/_temp_pdf_source/`（処理後削除）
 - PDF: `outputFolder/出力名_単ページ.pdf` または `出力名_見開き.pdf`
   - 同名ファイルが存在する場合は自動で連番付与: `出力名_見開き(1).pdf`
+- `process_images` コマンドは実際のJPEG出力パスを `ProcessResult.output_folder` で返す（PDF生成時のソース参照用）
 
 ## UI/UX
 
@@ -341,7 +354,7 @@ npm run tauri build --debug  # デバッグビルド
 ## 注意事項
 
 - `targetFiles` はファイル名のみ格納（フルパスではない）
-- PDFソースは処理後JPEGの場合 `/jpg` サブフォルダを参照する必要あり
+- PDFソースは `process_images` が返す `output_folder`（実際のJPEG出力パス）を参照
 - ノンブル設定は各パネル間で自動同期される
 - `JSON_FOLDER_PATH` は `G:/共有ドライブ/...` にハードコードされている
 
@@ -423,11 +436,12 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] CSP/assetProtocol設定の最適化
 - [x] PDF出力の同名ファイル自動連番（上書き防止）
 - [x] バッチ処理のキャンセル機能（AtomicBoolフラグ + 控えめな×ボタン）
+- [x] renderer.js → ES Modules完全移行（6,138行 → 16モジュールに分割）
+- [x] JPEG出力の連番フォルダ対応（jpg → jpg(1) → jpg(2)...）
 
 ## 今後の改善候補
 
 - [ ] プリセット保存/読み込み機能
 - [ ] 処理履歴の表示
 - [ ] 設定のエクスポート/インポート
-- [ ] renderer.jsの段階的モジュール分割
 - [ ] テスト基盤の構築

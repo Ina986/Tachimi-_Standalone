@@ -1,191 +1,186 @@
 /**
  * タチミ - メインエントリポイント
- * ES Modulesを使用した新しいアーキテクチャ
+ * renderer.jsの機能を全てESモジュールに分割し、ここで統合する
  */
 
 // === コアモジュール ===
-import { store, initialState } from './core/state.js';
+import { store } from './core/state.js';
 import { eventBus, Events } from './core/events.js';
 import * as tauriApi from './core/tauri-api.js';
+import appState from './core/app-state.js';
 
 // === ユーティリティ ===
-import * as dom from './utils/dom.js';
+import { $ } from './utils/dom.js';
 import * as storage from './utils/storage.js';
 import * as formatters from './utils/formatters.js';
 
 // === UIコンポーネント ===
 import { processingOverlay } from './ui/overlay.js';
-import { showAlert, showConfirm, setStatus } from './ui/alerts.js';
+import { showAlert, showConfirm } from './ui/alerts.js';
 
-// DOM要素取得のショートカット
-const $ = dom.$;
+// === フィーチャーモジュール ===
+import {
+    setupFileHandlingEvents, initDefaultOutputFolder, setStatus,
+    updateExecuteBtn, updateOutputInfo, updateFileInfo
+} from './features/file-handling.js';
+
+import { setupJsonParsingEvents } from './features/json-parsing.js';
+import { setupJsonModalEvents } from './features/json-modal.js';
+import { setupJsonRegisterEvents } from './features/json-register.js';
+
+import {
+    setupPresetCards, setupTachikiriCards, setupOutputPanelEvents,
+    updateOutputPanels, updateTachikiriSettings, updateColorSettingsVisibility,
+    updateSpreadNombreHint, syncNombreSettings,
+    updateJpegNombreSectionVisibility, updateJpegOptionsAvailability
+} from './features/output-panels.js';
+
+import {
+    setupPreviewEvents, updateSpreadPreview, updateSinglePreview,
+    updateJpegPreview, updateCropRangeStatus,
+    loadPreviewImageByIndex, loadPreviewImage,
+    updateCropPageNav, updateCropModeImage
+} from './features/preview.js';
+
+import {
+    drawRulers, renderGuides, updateGuideList,
+    addGuide, removeGuide, applyGuidesToCrop
+} from './features/guides.js';
+
+import {
+    setupCropModeEvents, openCropMode, closeCropMode,
+    updateSelectionVisual, updateFillStrokePreview,
+    updateApplyButtonState, updateCropModeHint,
+    updateGuideButtonHighlight, updateCropModeLabelSelect,
+    clearFillStrokePreview, applySelectionRangeInCropMode,
+    syncColorSettingsToOverlay
+} from './features/crop-mode.js';
+
+import { setupExecutionEvents } from './features/execution.js';
+
+import { loadSettings, setupSettingsAutoSave } from './features/settings.js';
+
+import { setupUpdateEvents, updateVersionDisplay, checkForUpdateOnStartup } from './features/update-system.js';
+
+import { setupUnlockEvents } from './features/feature-unlock.js';
+
+import { onRestore } from './features/undo-redo.js';
 
 // ========================================
-// グローバル互換性レイヤー
-// 既存のrenderer.jsからの段階的移行のため
+// Tauri API初期化
 // ========================================
 
-// Tauri APIをグローバルに公開（既存コードとの互換性）
-window.tauriApi = tauriApi;
+/**
+ * Tauri APIをappStateオブジェクトに設定
+ */
+function initTauriAPIs() {
+    console.log('Tauri APIs:', Object.keys(window.__TAURI__ || {}));
 
-// ユーティリティをグローバルに公開
-window.dom = dom;
-window.storage = storage;
-window.formatters = formatters;
+    if (window.__TAURI__) {
+        if (window.__TAURI__.core) {
+            appState.invoke = window.__TAURI__.core.invoke;
+            appState.convertFileSrc = window.__TAURI__.core.convertFileSrc;
+        }
+        if (window.__TAURI__.event) {
+            appState.listen = window.__TAURI__.event.listen;
+        }
+        if (window.__TAURI__.dialog) {
+            appState.openDialog = window.__TAURI__.dialog.open;
+            appState.messageDialog = window.__TAURI__.dialog.message;
+        }
+        if (window.__TAURI__.shell) {
+            appState.openPath = window.__TAURI__.shell.open;
+        }
+        if (window.__TAURI__.fs) {
+            appState.readTextFile = window.__TAURI__.fs.readTextFile;
+            appState.statFile = window.__TAURI__.fs.stat;
+        }
+        if (window.__TAURI__.path) {
+            appState.desktopDir = window.__TAURI__.path.desktopDir;
+        }
+        console.log('Tauri APIs initialized on appState');
+    } else {
+        console.error('Tauri API not found!');
+    }
+}
 
-// ストアをグローバルに公開
-window.store = store;
-window.eventBus = eventBus;
-window.Events = Events;
+// ========================================
+// window.*公開（クロスモジュール通信用）
+// ========================================
 
-// UIコンポーネントをグローバルに公開
-window.processingOverlay = processingOverlay;
-window.showAlert = showAlert;
-window.showConfirm = showConfirm;
-window.setStatus = setStatus;
+/**
+ * 全モジュールの関数をwindow.*に公開
+ * モジュール間のwindow.xxx()呼び出しを解決する
+ */
+function exposeToWindow() {
+    // 共有状態
+    window.appState = appState;
 
-// DOM $関数をグローバルに（既存コードとの互換性）
-window.$ = $;
+    // UI
+    window.processingOverlay = processingOverlay;
+    window.showAlert = showAlert;
+    window.showConfirm = showConfirm;
+    window.setStatus = setStatus;
+    window.$ = $;
+
+    // 旧コアモジュール（後方互換）
+    window.store = store;
+    window.eventBus = eventBus;
+    window.Events = Events;
+    window.tauriApi = tauriApi;
+    window.storage = storage;
+    window.formatters = formatters;
+
+    // file-handling
+    window.updateExecuteBtn = updateExecuteBtn;
+    window.updateOutputInfo = updateOutputInfo;
+    window.updateFileInfo = updateFileInfo;
+
+    // preview
+    window.updateSpreadPreview = updateSpreadPreview;
+    window.updateSinglePreview = updateSinglePreview;
+    window.updateJpegPreview = updateJpegPreview;
+    window.updateCropRangeStatus = updateCropRangeStatus;
+    window.loadPreviewImage = loadPreviewImage;
+    window.loadPreviewImageByIndex = loadPreviewImageByIndex;
+    window.updateCropPageNav = updateCropPageNav;
+    window.updateCropModeImage = updateCropModeImage;
+
+    // output-panels
+    window.updateOutputPanels = updateOutputPanels;
+    window.updateTachikiriSettings = updateTachikiriSettings;
+    window.updateColorSettingsVisibility = updateColorSettingsVisibility;
+    window.syncNombreSettings = syncNombreSettings;
+    window.updateSpreadNombreHint = updateSpreadNombreHint;
+    window.updateJpegNombreSectionVisibility = updateJpegNombreSectionVisibility;
+    window.updateJpegOptionsAvailability = updateJpegOptionsAvailability;
+
+    // crop-mode
+    window.openCropMode = openCropMode;
+    window.closeCropMode = closeCropMode;
+    window.updateSelectionVisual = updateSelectionVisual;
+    window.updateFillStrokePreview = updateFillStrokePreview;
+    window.updateApplyButtonState = updateApplyButtonState;
+    window.updateCropModeHint = updateCropModeHint;
+    window.updateGuideButtonHighlight = updateGuideButtonHighlight;
+    window.updateCropModeLabelSelect = updateCropModeLabelSelect;
+    window.clearFillStrokePreview = clearFillStrokePreview;
+    window.applySelectionRangeInCropMode = applySelectionRangeInCropMode;
+    window.syncColorSettingsToOverlay = syncColorSettingsToOverlay;
+
+    // guides
+    window.drawRulers = drawRulers;
+    window.renderGuides = renderGuides;
+    window.updateGuideList = updateGuideList;
+    window._updateGuideList = updateGuideList;  // feature-unlock.jsから参照
+    window.addGuide = addGuide;
+    window.removeGuide = removeGuide;
+    window.applyGuidesToCrop = applyGuidesToCrop;
+}
 
 // ========================================
 // アプリケーション初期化
 // ========================================
-
-/**
- * 設定を読み込んでストアに反映
- */
-function loadSavedSettings() {
-    const saved = storage.loadSettings();
-    if (!saved) return;
-
-    // 保存された設定をストアに反映
-    if (saved.output) {
-        store.set('output.spreadPdf', saved.output.spreadPdf ?? true);
-        store.set('output.singlePdf', saved.output.singlePdf ?? false);
-        store.set('output.jpeg', saved.output.jpeg ?? false);
-    }
-
-    if (saved.tachikiri) {
-        store.set('tachikiri.type', saved.tachikiri.type || 'fill_white');
-        if (saved.tachikiri.crop) {
-            store.set('tachikiri.crop', saved.tachikiri.crop);
-        }
-        store.set('tachikiri.strokeColor', saved.tachikiri.strokeColor || 'black');
-        store.set('tachikiri.fillColor', saved.tachikiri.fillColor || 'white');
-        store.set('tachikiri.fillOpacity', saved.tachikiri.fillOpacity ?? 50);
-    }
-
-    if (saved.resize) {
-        store.set('resize.mode', saved.resize.mode || 'fixed');
-        store.set('resize.percent', saved.resize.percent ?? 50);
-    }
-
-    if (saved.spreadPdf) {
-        Object.entries(saved.spreadPdf).forEach(([key, value]) => {
-            store.set(`spreadPdf.${key}`, value);
-        });
-    }
-
-    if (saved.singlePdf) {
-        Object.entries(saved.singlePdf).forEach(([key, value]) => {
-            store.set(`singlePdf.${key}`, value);
-        });
-    }
-
-    if (saved.jpeg) {
-        Object.entries(saved.jpeg).forEach(([key, value]) => {
-            store.set(`jpeg.${key}`, value);
-        });
-    }
-
-    eventBus.emit(Events.SETTINGS_LOADED, saved);
-    console.log('設定を読み込みました');
-}
-
-/**
- * 設定の自動保存をセットアップ
- */
-function setupSettingsAutoSave() {
-    // ストアの変更を監視して自動保存
-    let saveTimeout = null;
-
-    store.subscribeAll((path) => {
-        // 設定関連のパスのみ保存
-        const settingsPaths = ['output', 'tachikiri', 'resize', 'spreadPdf', 'singlePdf', 'jpeg'];
-        const shouldSave = settingsPaths.some(p => path.startsWith(p));
-
-        if (shouldSave) {
-            // デバウンス処理
-            if (saveTimeout) clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                const settings = {
-                    output: store.get('output'),
-                    tachikiri: store.get('tachikiri'),
-                    resize: store.get('resize'),
-                    spreadPdf: store.get('spreadPdf'),
-                    singlePdf: store.get('singlePdf'),
-                    jpeg: store.get('jpeg')
-                };
-                storage.saveSettings(settings);
-                eventBus.emit(Events.SETTINGS_SAVED, settings);
-            }, 500);
-        }
-    });
-}
-
-/**
- * デフォルト出力フォルダを初期化
- */
-async function initDefaultOutputFolder() {
-    try {
-        await tauriApi.waitForInit();
-        const defaultFolder = await tauriApi.getDefaultOutputFolder();
-        if (defaultFolder && !store.get('files.outputFolder')) {
-            store.set('files.outputFolder', defaultFolder);
-            console.log('デフォルト出力フォルダを設定:', defaultFolder);
-        }
-    } catch (e) {
-        console.error('デフォルト出力フォルダの取得に失敗:', e);
-    }
-}
-
-/**
- * Tauriイベントリスナーをセットアップ
- */
-async function setupTauriEventListeners() {
-    try {
-        await tauriApi.waitForInit();
-
-        // 処理進捗イベント
-        await tauriApi.listen('processing_progress', (event) => {
-            const { completed, in_progress, total, current_file, phase } = event.payload;
-            eventBus.emit(Events.PROCESSING_PROGRESS, {
-                completed,
-                inProgress: in_progress,
-                total,
-                currentFile: current_file,
-                phase
-            });
-        });
-
-        // ドラッグ＆ドロップイベント
-        await tauriApi.listen('tauri://drag-enter', () => {
-            eventBus.emit('drag:enter');
-        });
-
-        await tauriApi.listen('tauri://drag-leave', () => {
-            eventBus.emit('drag:leave');
-        });
-
-        await tauriApi.listen('tauri://drag-drop', (event) => {
-            eventBus.emit('drag:drop', event.payload);
-        });
-
-        console.log('Tauriイベントリスナーをセットアップしました');
-    } catch (e) {
-        console.error('Tauriイベントリスナーのセットアップに失敗:', e);
-    }
-}
 
 /**
  * メイン初期化関数
@@ -193,23 +188,52 @@ async function setupTauriEventListeners() {
 async function init() {
     console.log('タチミ初期化開始...');
 
-    // Tauri APIの初期化を待機
-    await tauriApi.waitForInit();
+    // 1. Tauri API初期化
+    initTauriAPIs();
 
-    // 設定読み込み
-    loadSavedSettings();
+    // 2. window.*に関数を公開（setupEvents前に必要）
+    exposeToWindow();
 
-    // 自動保存セットアップ
+    // 3. Undo/RedoのrestoreState後コールバック登録
+    onRestore(() => {
+        renderGuides();
+        updateGuideList();
+        updateSelectionVisual();
+        updateFillStrokePreview();
+        updateApplyButtonState();
+        updateCropModeHint();
+        updateGuideButtonHighlight();
+    });
+
+    // 4. 全モジュールのイベントセットアップ
+    setupFileHandlingEvents();
+    setupJsonParsingEvents();
+    setupJsonModalEvents();
+    setupJsonRegisterEvents();
+    setupOutputPanelEvents();
+    setupPreviewEvents();
+    setupCropModeEvents();
+    setupExecutionEvents();
+    setupUpdateEvents();
+    setupUnlockEvents();
+
+    // 5. タチキリ設定・実行ボタンの初期化
+    updateTachikiriSettings();
+    updateExecuteBtn();
+
+    // 6. 保存された設定を読み込み → UI復元
+    loadSettings();
     setupSettingsAutoSave();
 
-    // デフォルト出力フォルダ
+    // 7. デフォルト出力フォルダ
     await initDefaultOutputFolder();
 
-    // Tauriイベントリスナー
-    await setupTauriEventListeners();
+    // 8. バージョン表示
+    await updateVersionDisplay();
 
-    // 初期化完了
-    eventBus.emit('app:ready');
+    // 9. 起動時のアップデート確認（バックグラウンド）
+    checkForUpdateOnStartup();
+
     console.log('タチミ初期化完了');
 }
 
@@ -219,19 +243,3 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
-
-// エクスポート（他のモジュールから利用可能）
-export {
-    store,
-    eventBus,
-    Events,
-    tauriApi,
-    dom,
-    storage,
-    formatters,
-    processingOverlay,
-    showAlert,
-    showConfirm,
-    setStatus,
-    $
-};

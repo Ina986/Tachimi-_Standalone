@@ -147,10 +147,23 @@ async fn process_images(
     let base_output_path = PathBuf::from(&output_folder);
 
     // JPEGは "jpg" サブフォルダに出力（一時フォルダの場合はそのまま）
+    // 既存フォルダがある場合は連番で新しいフォルダを作成: jpg → jpg(1) → jpg(2) ...
     let output_path = if output_folder.contains("_temp_pdf_source") {
         base_output_path.clone()
     } else {
-        base_output_path.join("jpg")
+        let jpg_path = base_output_path.join("jpg");
+        if jpg_path.exists() {
+            let mut counter = 1u32;
+            loop {
+                let new_path = base_output_path.join(format!("jpg({})", counter));
+                if !new_path.exists() {
+                    break new_path;
+                }
+                counter += 1;
+            }
+        } else {
+            jpg_path
+        }
     };
 
     // 出力フォルダを作成
@@ -229,6 +242,9 @@ async fn process_images(
         }
     });
 
+    // 実際のJPEG出力パス（連番フォルダの場合はjpg(N)になる）
+    let actual_output_folder = output_path.to_string_lossy().to_string();
+
     // キャンセルされた場合は早期リターン
     if CANCEL_FLAG.load(Ordering::Relaxed) {
         let done = processed.load(Ordering::SeqCst);
@@ -236,7 +252,7 @@ async fn process_images(
             processed: done,
             total,
             errors: vec![format!("処理がキャンセルされました ({}/{}完了)", done, total)],
-            output_folder: output_folder.clone(),
+            output_folder: actual_output_folder,
         });
     }
 
@@ -250,7 +266,7 @@ async fn process_images(
         processed: processed.load(Ordering::SeqCst),
         total,
         errors: error_list,
-        output_folder: output_folder.clone(),
+        output_folder: actual_output_folder,
     })
 }
 

@@ -1,6 +1,6 @@
 /**
  * タチミ - 処理中オーバーレイモジュール
- * 印刷工房スタイルの進捗表示
+ * Tachimiストロークアニメーション + 進捗表示
  */
 
 import { $ } from '../utils/dom.js';
@@ -30,6 +30,9 @@ class ProcessingOverlay {
         this.targetPercent = 0;
         this.animationFrame = null;
         this.totalFiles = 0;
+
+        // キャンセル状態
+        this.cancelled = false;
     }
 
     /**
@@ -48,6 +51,11 @@ class ProcessingOverlay {
         this.currentPercent = 0;
         this.targetPercent = 0;
         this.totalFiles = totalFiles;
+        this.cancelled = false;
+
+        // キャンセルボタン表示
+        const cancelBtn = $('cancelProcessingBtn');
+        if (cancelBtn) cancelBtn.style.display = 'flex';
 
         // UI初期化
         const percentEl = $('processingPercent');
@@ -64,6 +72,14 @@ class ProcessingOverlay {
         if (elapsedEl) elapsedEl.textContent = '0:00';
         if (inkFill) inkFill.style.width = '0%';
 
+        // Tachimi UI初期化
+        const tachimiPercent = $('tachimiPercent');
+        const tachimiFilename = $('tachimiFilename');
+        const tachimiFill = $('tachimiProgressFill');
+        if (tachimiPercent) tachimiPercent.textContent = '0%';
+        if (tachimiFilename) tachimiFilename.textContent = '';
+        if (tachimiFill) tachimiFill.style.width = '0%';
+
         this.setPhase('prepare');
         this.startAnimation();
         this.startElapsedTimer();
@@ -79,6 +95,9 @@ class ProcessingOverlay {
         if (overlay) {
             overlay.style.display = 'none';
         }
+        // キャンセルボタン非表示
+        const cancelBtn = $('cancelProcessingBtn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
     }
 
     /**
@@ -95,7 +114,7 @@ class ProcessingOverlay {
             labelEl.textContent = this.phaseLabels[phase] || phase;
         }
 
-        // ステップの状態を更新（印刷工房スタイル）
+        // ステップの状態を更新
         document.querySelectorAll('.process-steps .step').forEach((step, i) => {
             step.classList.remove('active', 'completed');
             if (i < idx) {
@@ -114,7 +133,7 @@ class ProcessingOverlay {
             // 完了時は100%に
             this.targetPercent = 100;
 
-            // 完了時間を表示（押印に）
+            // 完了時間を表示
             const elapsed = Date.now() - this.startTime;
             const completionTimeEl = $('completionTime');
             if (completionTimeEl) {
@@ -175,6 +194,12 @@ class ProcessingOverlay {
         if (filenameEl && filename) {
             filenameEl.textContent = filename;
         }
+
+        // Tachimi UI更新
+        const tachimiFilename = $('tachimiFilename');
+        if (tachimiFilename && filename) {
+            tachimiFilename.textContent = filename;
+        }
     }
 
     /**
@@ -197,11 +222,17 @@ class ProcessingOverlay {
             const percentEl = $('processingPercent');
             if (percentEl) percentEl.textContent = Math.round(this.currentPercent);
 
-            // インクバー更新（印刷工房スタイル）
+            // インクバー更新
             const inkFill = $('processingBar');
             if (inkFill) {
                 inkFill.style.width = `${this.currentPercent}%`;
             }
+
+            // Tachimi UI更新
+            const tachimiPercent = $('tachimiPercent');
+            if (tachimiPercent) tachimiPercent.textContent = Math.round(this.currentPercent) + '%';
+            const tachimiFill = $('tachimiProgressFill');
+            if (tachimiFill) tachimiFill.style.width = `${this.currentPercent}%`;
 
             this.animationFrame = requestAnimationFrame(animate);
         };
