@@ -234,12 +234,12 @@ pub struct WorkInfo {
 
 ### ノンブルサイズ
 
-| サイズ | フォントサイズ |
-|--------|---------------|
-| small | 160px |
-| medium | 240px |
-| large | 320px |
-| xlarge | 400px |
+| サイズ | 画像焼き込み（余白なし時） | PDF余白（余白あり時） |
+|--------|---------------------------|---------------------|
+| small | 80px | 7pt |
+| medium | 120px | 9pt |
+| large | 160px | 12pt |
+| xlarge | 200px | 14pt |
 
 ### ノンブル配置ロジック
 
@@ -324,6 +324,7 @@ npm run tauri build --debug  # デバッグビルド
 - JPEG: `outputFolder/jpg/` サブフォルダ
 - PDF用一時JPEG: `outputFolder/_temp_pdf_source/`（処理後削除）
 - PDF: `outputFolder/出力名_単ページ.pdf` または `出力名_見開き.pdf`
+  - 同名ファイルが存在する場合は自動で連番付与: `出力名_見開き(1).pdf`
 
 ## UI/UX
 
@@ -611,6 +612,9 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] 自動更新機能（GitHub Releases + tauri-plugin-updater）
 - [x] リリースビルドでDevTools有効化（devtools feature flag）
 - [x] CSP/assetProtocol設定の最適化（v1.0.15）
+- [x] 見開きPDF余白なし時のノンブル二重表示バグ修正（`||` → `??` でfalsy 0対策）
+- [x] 余白なし時の画像ノンブルサイズを半分に縮小（断ち切り枠内用）
+- [x] PDF出力の同名ファイル自動連番（上書き防止）
 
 ## 今後の改善候補
 

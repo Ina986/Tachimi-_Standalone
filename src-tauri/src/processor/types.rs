@@ -141,12 +141,13 @@ pub fn color_to_rgb(color: &str) -> Rgba<u8> {
 
 /// ノンブルサイズを取得（ピクセル単位）
 /// 高解像度漫画原稿向け（背景ボックス方式用に調整）
+/// 余白なし時は断ち切り枠内に描画するため半分サイズ
 pub fn get_nombre_font_size(size_key: &str) -> f32 {
     match size_key {
-        "small" => 160.0,
-        "medium" => 240.0,
-        "large" => 320.0,
-        "xlarge" => 400.0,
-        _ => 240.0,
+        "small" => 80.0,
+        "medium" => 120.0,
+        "large" => 160.0,
+        "xlarge" => 200.0,
+        _ => 120.0,
     }
 }

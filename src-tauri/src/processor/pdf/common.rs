@@ -162,6 +162,26 @@ pub fn add_padding_to_image(img: &DynamicImage, padding_px: u32) -> DynamicImage
     DynamicImage::ImageRgba8(img_buffer)
 }
 
+/// 出力パスが既存の場合、連番を付与してユニークなパスを返す
+/// 例: output.pdf → output(1).pdf → output(2).pdf
+pub fn unique_output_path(path: &str) -> String {
+    let p = Path::new(path);
+    if !p.exists() {
+        return path.to_string();
+    }
+    let parent = p.parent().unwrap_or(Path::new(""));
+    let stem = p.file_stem().unwrap_or_default().to_string_lossy();
+    let ext = p.extension().unwrap_or_default().to_string_lossy();
+    let mut counter = 1u32;
+    loop {
+        let new_path = parent.join(format!("{}({}).{}", stem, counter, ext));
+        if !new_path.exists() {
+            return new_path.to_string_lossy().to_string();
+        }
+        counter += 1;
+    }
+}
+
 /// ノンブルのフォントサイズ（pt単位）を取得
 pub fn get_nombre_font_size_pt(nombre_size: &str) -> f32 {
     match nombre_size {

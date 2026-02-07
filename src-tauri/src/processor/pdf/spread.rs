@@ -10,7 +10,7 @@ use tauri::Emitter;
 
 use super::common::{
     create_pdf_image, create_pdf_image_from_jpeg_file, create_white_page_image,
-    get_image_dimensions, get_nombre_font_size_pt, px_to_mm, DEFAULT_DPI,
+    get_image_dimensions, get_nombre_font_size_pt, px_to_mm, unique_output_path, DEFAULT_DPI,
 };
 use crate::processor::jpeg::is_jpeg_file;
 use crate::processor::image_loader::load_image;
@@ -245,12 +245,13 @@ pub fn generate_spread_pdf(
         in_progress: 0,
     });
 
-    let file = File::create(output_path)
+    let actual_path = unique_output_path(output_path);
+    let file = File::create(&actual_path)
         .map_err(|e| format!("PDFファイルの作成に失敗: {}", e))?;
     let mut writer = BufWriter::new(file);
 
     doc.save(&mut writer)
         .map_err(|e| format!("PDFの保存に失敗: {}", e))?;
 
-    Ok(output_path.to_string())
+    Ok(actual_path)
 }
