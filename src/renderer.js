@@ -561,6 +561,14 @@ const processingOverlay = {
         if (elapsedEl) elapsedEl.textContent = '0:00';
         if (inkFill) inkFill.style.width = '0%';
 
+        // 新UI初期化
+        const tachimiPercent = $('tachimiPercent');
+        const tachimiFilename = $('tachimiFilename');
+        const tachimiFill = $('tachimiProgressFill');
+        if (tachimiPercent) tachimiPercent.textContent = '0%';
+        if (tachimiFilename) tachimiFilename.textContent = '';
+        if (tachimiFill) tachimiFill.style.width = '0%';
+
         this.setPhase('prepare');
         this.startAnimation();
         this.startElapsedTimer();
@@ -603,13 +611,6 @@ const processingOverlay = {
             }
             // 完了時は100%に
             this.targetPercent = 100;
-
-            // 完了時間を表示（押印に）
-            const elapsed = Date.now() - this.startTime;
-            const completionTimeEl = $('completionTime');
-            if (completionTimeEl) {
-                completionTimeEl.textContent = this.formatTime(elapsed) + ' で完了';
-            }
         }
     },
 
@@ -662,6 +663,12 @@ const processingOverlay = {
         if (filenameEl && filename) {
             filenameEl.textContent = filename;
         }
+
+        // 新UI更新
+        const tachimiFilename = $('tachimiFilename');
+        if (tachimiFilename && filename) {
+            tachimiFilename.textContent = filename;
+        }
     },
 
     startAnimation() {
@@ -686,6 +693,12 @@ const processingOverlay = {
             if (inkFill) {
                 inkFill.style.width = `${this.currentPercent}%`;
             }
+
+            // 新UI更新
+            const tachimiPercent = $('tachimiPercent');
+            if (tachimiPercent) tachimiPercent.textContent = Math.round(this.currentPercent) + '%';
+            const tachimiFill = $('tachimiProgressFill');
+            if (tachimiFill) tachimiFill.style.width = `${this.currentPercent}%`;
 
             this.animationFrame = requestAnimationFrame(animate);
         };
@@ -5635,7 +5648,7 @@ async function execute() {
 
         // 完了フェーズを表示（完了マークを見せる）
         processingOverlay.setPhase('complete');
-        await new Promise(r => setTimeout(r, 1300));
+        await new Promise(r => setTimeout(r, 900));
 
         $('modalMessage').textContent = message;
         $('modal').style.display = 'flex';

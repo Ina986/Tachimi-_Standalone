@@ -9,7 +9,7 @@
 <body>
     <div id="app">
         <header class="header">
-            <h1>タチミ</h1>
+            <h1>Tachimi</h1>
             <span class="badge">Standalone</span>
             <!-- 機能アンロック用鍵アイコン（隠しボタン風） -->
             <span id="btnFeatureLock" class="feature-lock-icon">
@@ -417,79 +417,68 @@
         <div id="processingOverlay" class="processing-overlay" style="display:none;">
             <div class="processing-backdrop"></div>
             <div class="processing-content">
-                <!-- 印刷機パネル -->
-                <div class="print-machine">
-                    <!-- ヘッダー：工程表示 -->
-                    <div class="machine-header">
-                        <div class="machine-title">原稿処理システム</div>
+                <!-- Tachimi 処理オーバーレイ -->
+                <div class="print-machine tachimi-overlay">
+                    <!-- 旧要素（JS互換性維持のためDOMに残す） -->
+                    <div style="display:none">
                         <div class="machine-status" id="processingPhaseLabel">準備中</div>
+                        <div id="processingPercent">0</div>
+                        <div id="processingBar"></div>
+                        <div class="process-steps">
+                            <div class="step" data-phase="prepare"></div>
+                            <div class="step" data-phase="process"></div>
+                            <div class="step" data-phase="pdf"></div>
+                            <div class="step" data-phase="complete"></div>
+                        </div>
+                        <span id="processingCurrent">0</span>
+                        <span id="processingTotal">0</span>
+                        <div id="processingFilename"></div>
+                        <span id="processingElapsed">0:00</span>
                     </div>
 
-                    <!-- メインディスプレイ -->
-                    <div class="machine-display">
-                        <div class="display-percent" id="processingPercent">0</div>
-                        <div class="display-unit">%</div>
+                    <!-- Tachimi テキストストロークアニメーション -->
+                    <div class="tachimi-text-container">
+                        <svg class="tachimi-svg" viewBox="0 0 443 140">
+                            <defs>
+                                <radialGradient id="tachimiRadialGlow" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0%" stop-color="#f2d4d8" stop-opacity="0.6" />
+                                    <stop offset="35%" stop-color="#e8c4ca" stop-opacity="0.3" />
+                                    <stop offset="70%" stop-color="#d4a8b0" stop-opacity="0.08" />
+                                    <stop offset="100%" stop-color="#d4a8b0" stop-opacity="0" />
+                                </radialGradient>
+                            </defs>
+                            <ellipse class="tachimi-glow-bg" cx="222" cy="65" rx="260" ry="90" fill="url(#tachimiRadialGlow)" />
+                            <text class="tachimi-char tachimi-char-0" x="0"   y="108">T</text>
+                            <text class="tachimi-char tachimi-char-1" x="65"  y="108">a</text>
+                            <text class="tachimi-char tachimi-char-2" x="127" y="108">c</text>
+                            <text class="tachimi-char tachimi-char-3" x="183" y="108">h</text>
+                            <text class="tachimi-char tachimi-char-4" x="252" y="108">i</text>
+                            <text class="tachimi-char tachimi-char-5" x="293" y="108">m</text>
+                            <text class="tachimi-char tachimi-char-6" x="391" y="108">i</text>
+                        </svg>
                     </div>
 
-                    <!-- インクローラー進捗バー -->
-                    <div class="ink-roller-container">
-                        <div class="roller-track">
-                            <div class="ink-fill" id="processingBar"></div>
-                            <div class="roller-shine"></div>
+                    <!-- 進捗ライン -->
+                    <div class="tachimi-progress-area">
+                        <div class="tachimi-progress-track">
+                            <div class="tachimi-progress-fill" id="tachimiProgressFill"></div>
                         </div>
-                        <div class="roller-left"></div>
-                        <div class="roller-right"></div>
-                    </div>
-
-                    <!-- 工程インジケーター -->
-                    <div class="process-steps">
-                        <div class="step" data-phase="prepare">
-                            <div class="step-indicator"></div>
-                            <div class="step-label">準備</div>
+                        <div class="tachimi-progress-info">
+                            <span class="tachimi-percent" id="tachimiPercent">0%</span>
+                            <span class="tachimi-filename" id="tachimiFilename"></span>
                         </div>
-                        <div class="step-connector"></div>
-                        <div class="step" data-phase="process">
-                            <div class="step-indicator"></div>
-                            <div class="step-label">変換</div>
-                        </div>
-                        <div class="step-connector"></div>
-                        <div class="step" data-phase="pdf">
-                            <div class="step-indicator"></div>
-                            <div class="step-label">製本</div>
-                        </div>
-                        <div class="step-connector"></div>
-                        <div class="step" data-phase="complete">
-                            <div class="step-indicator"></div>
-                            <div class="step-label">完了</div>
-                        </div>
-                    </div>
-
-                    <!-- カウンター表示 -->
-                    <div class="machine-counter">
-                        <div class="counter-display">
-                            <span class="counter-value" id="processingCurrent">0</span>
-                            <span class="counter-sep">/</span>
-                            <span class="counter-total" id="processingTotal">0</span>
-                        </div>
-                        <div class="counter-label">処理済</div>
-                    </div>
-
-                    <!-- ファイル名表示 -->
-                    <div class="file-display" id="processingFilename"></div>
-
-                    <!-- 経過時間 -->
-                    <div class="time-display">
-                        <span class="time-label">経過</span>
-                        <span class="time-value" id="processingElapsed">0:00</span>
                     </div>
                 </div>
 
-                <!-- 完了時の押印 -->
+                <!-- 完了アニメーション -->
                 <div class="stamp-complete" id="stampComplete">
-                    <div class="stamp-circle">
-                        <div class="stamp-text">完了</div>
+                    <div class="apply-success-icon">
+                        <div class="apply-success-burst"></div>
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <circle class="apply-success-ring" cx="24" cy="24" r="22"/>
+                            <path class="apply-success-check-path" d="M14 24l7 7 13-13"/>
+                        </svg>
                     </div>
-                    <div class="stamp-time" id="completionTime"></div>
                 </div>
             </div>
         </div>
