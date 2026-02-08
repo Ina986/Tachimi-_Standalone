@@ -237,7 +237,7 @@ export async function updateVersionDisplay() {
 
             const versionInfoEl = document.querySelector('.version-info');
             if (versionInfoEl) {
-                versionInfoEl.textContent = `タチミ Standalone ${versionText}`;
+                versionInfoEl.textContent = `Tachimi Standalone ${versionText}`;
             }
 
             console.log('バージョン表示を更新:', versionText);
