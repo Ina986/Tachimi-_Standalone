@@ -49,7 +49,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "icons/icon.ico": "icon.ico"
+      "icons/icon.ico": "tachimi.ico"
     },
     "windows": {
       "nsis": {
