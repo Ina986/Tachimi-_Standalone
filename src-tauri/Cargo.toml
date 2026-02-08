@@ -1,6 +1,6 @@
 [package]
 name = "tachimi"
-version = "1.1.1"
+version = "1.1.2"
 description = "漫画原稿一括処理アプリ - タチミ"
 authors = ["Tachimi"]
 license = "MIT"
