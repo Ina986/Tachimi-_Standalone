@@ -8,7 +8,7 @@ import { $ } from '../utils/dom.js';
 import appState from '../core/app-state.js';
 import { COLOR_MAP, JSON_REGISTER_ASPECT_RATIO } from '../features/constants.js';
 import { saveToHistory, clearHistory, onRestore, undo, redo } from '../features/undo-redo.js';
-import { renderGuides, updateGuideList, drawRulers, setupRulerDragEvents, applyGuidesToCrop } from '../features/guides.js';
+import { renderGuides, updateGuideList, drawRulers, setupRulerDragEvents, applyGuidesToCrop, selectGuide, deselectGuide, moveSelectedGuide } from '../features/guides.js';
 import { isFeatureUnlocked, updateJsonRegisterButtonVisibility, updateCropInputsDisabledState } from '../features/feature-unlock.js';
 import { updateCropPageNav, loadPreviewImageByIndex, updateCropModeImage } from '../features/preview.js';
 
@@ -239,6 +239,10 @@ export function closeCropMode(apply) {
 
         overlay.style.display = 'none';
         appState.cropModeOpen = false;
+
+        // ガイド選択状態をリセット
+        appState.selectedGuideIndex = null;
+        appState.guideDragging = null;
 
         // UI改修: ステップをリセット
         appState.cropModeStep = 'select';
@@ -959,6 +963,11 @@ export function setupCropDragEventsFull(container) {
     container.onmousedown = (e) => {
         if (e.button !== 0) return;
 
+        // コンテナクリック時にガイド選択を解除（ガイド線自体のクリックはstopPropagationされる）
+        if (appState.selectedGuideIndex !== null) {
+            deselectGuide();
+        }
+
         // スペースキーが押されている場合はパン操作
         if (appState.isSpacePressed && appState.currentZoom > 1) {
             appState.isPanning = true;
@@ -1333,9 +1342,13 @@ export function setupCropModeEvents() {
 
     // キーボードショートカット
     document.addEventListener('keydown', (e) => {
-        // ESCキーで画像選択モードを閉じる
+        // ESCキー: ガイド選択中は選択解除、それ以外はクロップモードを閉じる
         if (e.key === 'Escape' && appState.cropModeOpen) {
-            closeCropMode(false);
+            if (appState.selectedGuideIndex !== null) {
+                deselectGuide();
+            } else {
+                closeCropMode(false);
+            }
         }
 
         // 画像選択モード中のUndo/Redo
@@ -1380,8 +1393,33 @@ export function setupCropModeEvents() {
                 }
             }
 
-            // 矢印キー: 選択範囲を10pxずつ移動
+            // 矢印キー: ガイド選択中はガイド移動、それ以外は選択範囲移動
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                // ガイドが選択されている場合 → ガイドを移動
+                if (appState.selectedGuideIndex !== null && appState.selectedGuideIndex < appState.guides.length) {
+                    e.preventDefault();
+                    // Shift: 10px、通常: 1px
+                    const step = e.shiftKey ? 10 : 1;
+                    let dx = 0, dy = 0;
+
+                    switch (e.key) {
+                        case 'ArrowUp':    dy = -step; break;
+                        case 'ArrowDown':  dy = step; break;
+                        case 'ArrowLeft':  dx = -step; break;
+                        case 'ArrowRight': dx = step; break;
+                    }
+
+                    // 初回の矢印キー押下時にUndo履歴を保存（連続移動時は保存しない）
+                    if (!appState._guideArrowKeyActive) {
+                        saveToHistory();
+                        appState._guideArrowKeyActive = true;
+                    }
+
+                    moveSelectedGuide(dx, dy);
+                    return;
+                }
+
+                // ガイド未選択 → 選択範囲を移動
                 const left = parseInt($('cropLeftFull').value) || 0;
                 const top = parseInt($('cropTopFull').value) || 0;
                 const right = parseInt($('cropRightFull').value) || 0;
@@ -1391,7 +1429,7 @@ export function setupCropModeEvents() {
                 if (left !== 0 || top !== 0 || right !== 0 || bottom !== 0) {
                     e.preventDefault();
 
-                    const step = 10;
+                    const step = e.shiftKey ? 1 : 10;
                     let dx = 0, dy = 0;
 
                     switch (e.key) {
@@ -1445,6 +1483,17 @@ export function setupCropModeEvents() {
                     updateApplyButtonState();
                 }
             }
+
+            // Deleteキー: 選択中のガイドを削除
+            if ((e.key === 'Delete' || e.key === 'Backspace') && appState.selectedGuideIndex !== null) {
+                // 入力欄にフォーカスがある場合は無視
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                e.preventDefault();
+                const idx = appState.selectedGuideIndex;
+                if (idx >= 0 && idx < appState.guides.length) {
+                    if (typeof window.removeGuide === 'function') window.removeGuide(idx);
+                }
+            }
         }
     });
 
@@ -1461,6 +1510,11 @@ export function setupCropModeEvents() {
                     container.style.cursor = 'crosshair';
                 }
             }
+
+            // 矢印キーを離したらガイド移動のUndo連続抑制フラグをリセット
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                appState._guideArrowKeyActive = false;
+            }
         }
     });
 
@@ -1470,6 +1524,7 @@ export function setupCropModeEvents() {
             saveToHistory();  // Undo用に現在の状態を保存
         }
         appState.guides = [];
+        appState.selectedGuideIndex = null;
         renderGuides();
         updateGuideList();
         // UI改修: ヒントとガイドボタンを更新
@@ -1495,6 +1550,7 @@ export function setupCropModeEvents() {
         $('cropBottomFull').value = 0;
         // ガイドをクリア
         appState.guides = [];
+        appState.selectedGuideIndex = null;
         renderGuides();
         updateGuideList();
         updateSelectionVisual();

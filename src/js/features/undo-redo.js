@@ -38,6 +38,9 @@ export function getCurrentState() {
  */
 export function restoreState(state) {
     appState.guides = JSON.parse(JSON.stringify(state.guides));
+    // Undo/Redo時はガイド選択を解除（インデックスが変わる可能性があるため）
+    appState.selectedGuideIndex = null;
+    appState.guideDragging = null;
     if ($('cropLeftFull')) $('cropLeftFull').value = state.cropValues.left;
     if ($('cropTopFull')) $('cropTopFull').value = state.cropValues.top;
     if ($('cropRightFull')) $('cropRightFull').value = state.cropValues.right;

@@ -13,14 +13,14 @@ use tauri::Emitter;
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// 並列処理のスレッドプールを初期化
-/// CPUコア数の2倍のスレッドを使用（I/O待ち時間を活用）
+/// メモリ使用量を抑えるためCPUコア数と同数（最大8スレッド）
 fn init_thread_pool() {
     let num_cpus = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4);
 
-    // コア数の2倍（最大32スレッド）
-    let num_threads = (num_cpus * 2).min(32);
+    // コア数（最大8スレッド）— メモリ消費を抑制
+    let num_threads = num_cpus.min(8);
 
     if let Err(e) = ThreadPoolBuilder::new()
         .num_threads(num_threads)
@@ -133,6 +133,9 @@ async fn process_images(
 ) -> Result<ProcessResult, String> {
     // キャンセルフラグをリセット
     CANCEL_FLAG.store(false, Ordering::SeqCst);
+
+    // 処理開始前にPSDキャッシュを解放してメモリを確保
+    processor::clear_psd_cache();
 
     // 入力バリデーション
     if files.is_empty() {
@@ -279,6 +282,8 @@ async fn generate_pdf(
     files: Vec<String>,
     options: processor::PdfOptions,
 ) -> Result<String, String> {
+    // PDF生成前にPSDキャッシュを解放してメモリを確保
+    processor::clear_psd_cache();
     processor::generate_pdf(&app_handle, &input_folder, &output_path, &files, &options)
 }
 

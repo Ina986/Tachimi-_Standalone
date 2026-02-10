@@ -4437,24 +4437,48 @@ input:focus, select:focus {
     opacity: 0.9;
     pointer-events: auto;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+/* ヒットエリア拡大（見た目は変えずクリック判定を広くする） */
+.guide-line::before {
+    content: '';
+    position: absolute;
+}
+
+.guide-line.horizontal::before {
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
+}
+
+.guide-line.vertical::before {
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    right: -4px;
 }
 
 .guide-line:hover {
     opacity: 1;
-    background: linear-gradient(90deg, #ff4081, #e91e63, #ff4081);
-    box-shadow: 0 0 12px rgba(233, 30, 99, 0.8);
+}
+
+.guide-line.selected {
+    z-index: 10;
 }
 
 .guide-line.horizontal {
     height: 1px;
     box-shadow: 0 0 6px rgba(0, 229, 255, 0.8);
+    cursor: ns-resize;
 }
 
 .guide-line.vertical {
     width: 1px;
     background: linear-gradient(180deg, #00e5ff, #00bcd4, #00e5ff);
     box-shadow: 0 0 6px rgba(0, 229, 255, 0.8);
+    cursor: ew-resize;
 }
 
 /* サイドバー側のガイドセクションは非表示（フローティングボタンに統一） */
@@ -4574,6 +4598,12 @@ input:focus, select:focus {
 
 .guide-item:hover {
     background: rgba(0, 229, 255, 0.1);
+}
+
+.guide-item.selected {
+    background: rgba(0, 229, 255, 0.15);
+    border-left: 2px solid #00e5ff;
+    padding-left: 6px;
 }
 
 .guide-item-info {

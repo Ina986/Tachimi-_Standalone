@@ -32,6 +32,8 @@ const appState = {
     cropModeOpen: false,
     savedCropValues: { left: 0, top: 0, right: 0, bottom: 0 },
     guides: [],
+    selectedGuideIndex: null,
+    guideDragging: null,
     cropModeStep: 'select',
     isFirstCropModeOpen: true,
     guideMode: null,

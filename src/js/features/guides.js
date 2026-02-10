@@ -270,8 +270,14 @@ export function setupRulerDragEvents() {
         e.preventDefault();
     };
 
-    // マウス移動（ドラッグ中のプレビュー更新）
+    // マウス移動（ルーラードラッグ中のプレビュー更新 + ガイドドラッグ）
     document.addEventListener('mousemove', (e) => {
+        // ガイドドラッグ中の処理
+        if (appState.guideDragging && appState.cropModeOpen) {
+            onGuideDragMove(e);
+            return;
+        }
+
         if (!appState.rulerDragging || !appState.cropModeOpen) return;
 
         const img = $('cropPreviewImgFull');
@@ -309,8 +315,14 @@ export function setupRulerDragEvents() {
         }
     });
 
-    // マウスアップ（ガイドを確定）
+    // マウスアップ（ガイドを確定 / ガイドドラッグ終了）
     document.addEventListener('mouseup', (e) => {
+        // ガイドドラッグ終了
+        if (appState.guideDragging) {
+            onGuideDragEnd(e);
+            return;
+        }
+
         if (!appState.rulerDragging || !appState.cropModeOpen) return;
 
         const img = $('cropPreviewImgFull');
@@ -347,6 +359,53 @@ export function setupRulerDragEvents() {
     });
 }
 
+// ── ガイド選択・移動 ──────────────────────────────
+
+/**
+ * ガイドを選択
+ */
+export function selectGuide(index) {
+    if (index < 0 || index >= appState.guides.length) return;
+    appState.selectedGuideIndex = index;
+    renderGuides();
+    updateGuideList();
+}
+
+/**
+ * ガイドの選択を解除
+ */
+export function deselectGuide() {
+    if (appState.selectedGuideIndex === null) return;
+    appState.selectedGuideIndex = null;
+    renderGuides();
+    updateGuideList();
+}
+
+/**
+ * 選択中のガイドを移動（矢印キー用）
+ * @param {number} dx - 水平方向の移動量（px、画像座標系）
+ * @param {number} dy - 垂直方向の移動量（px、画像座標系）
+ */
+export function moveSelectedGuide(dx, dy) {
+    const idx = appState.selectedGuideIndex;
+    if (idx === null || idx < 0 || idx >= appState.guides.length) return;
+
+    const guide = appState.guides[idx];
+
+    if (guide.type === 'h') {
+        // 水平ガイド: Y方向のみ移動
+        const newPos = guide.position + dy;
+        guide.position = Math.max(0, Math.min(newPos, appState.previewImageSize.height));
+    } else {
+        // 垂直ガイド: X方向のみ移動
+        const newPos = guide.position + dx;
+        guide.position = Math.max(0, Math.min(newPos, appState.previewImageSize.width));
+    }
+
+    renderGuides();
+    updateGuideList();
+}
+
 // ── ガイド描画 ────────────────────────────────────
 
 /**
@@ -367,27 +426,85 @@ export function renderGuides() {
 
     appState.guides.forEach((guide, index) => {
         const line = document.createElement('div');
-        line.className = `guide-line ${guide.type === 'h' ? 'horizontal' : 'vertical'}`;
+        const isSelected = appState.selectedGuideIndex === index;
+        line.className = `guide-line ${guide.type === 'h' ? 'horizontal' : 'vertical'}${isSelected ? ' selected' : ''}`;
+        line.dataset.guideIndex = index;
 
         if (guide.type === 'h') {
             line.style.top = (guide.position * scaleY + bounds.offsetY) + 'px';
-            // 水平ガイドはコンテナ全体に表示
             line.style.left = '0';
             line.style.width = '100%';
         } else {
             line.style.left = (guide.position * scaleX + bounds.offsetX) + 'px';
-            // 垂直ガイドはコンテナ全体に表示
             line.style.top = '0';
             line.style.height = '100%';
         }
 
-        line.onclick = (e) => {
+        // mousedownでドラッグ開始 & 選択
+        line.onmousedown = (e) => {
+            if (e.button !== 0) return;
             e.stopPropagation();
-            removeGuide(index);
+            e.preventDefault();
+
+            // 選択状態にする
+            appState.selectedGuideIndex = index;
+            renderGuides();
+            updateGuideList();
+
+            // ドラッグ開始
+            saveToHistory();
+            appState.guideDragging = {
+                index: index,
+                type: guide.type,
+                startMouseX: e.clientX,
+                startMouseY: e.clientY,
+                startPosition: guide.position
+            };
         };
 
         container.appendChild(line);
     });
+}
+
+/**
+ * ガイドドラッグ中のマウス移動ハンドラ（setupRulerDragEvents内で登録）
+ */
+function onGuideDragMove(e) {
+    if (!appState.guideDragging || !appState.cropModeOpen) return;
+
+    const img = $('cropPreviewImgFull');
+    if (!img) return;
+
+    const bounds = getActualImageBounds(img);
+    const drag = appState.guideDragging;
+
+    if (drag.type === 'h') {
+        const scaleY = appState.previewImageSize.height / bounds.displayHeight;
+        const deltaDisplay = e.clientY - drag.startMouseY;
+        const deltaImage = deltaDisplay * scaleY;
+        let newPos = drag.startPosition + deltaImage;
+        newPos = Math.max(0, Math.min(Math.round(newPos), appState.previewImageSize.height));
+        appState.guides[drag.index].position = newPos;
+    } else {
+        const scaleX = appState.previewImageSize.width / bounds.displayWidth;
+        const deltaDisplay = e.clientX - drag.startMouseX;
+        const deltaImage = deltaDisplay * scaleX;
+        let newPos = drag.startPosition + deltaImage;
+        newPos = Math.max(0, Math.min(Math.round(newPos), appState.previewImageSize.width));
+        appState.guides[drag.index].position = newPos;
+    }
+
+    renderGuides();
+    updateGuideList();
+}
+
+/**
+ * ガイドドラッグ終了ハンドラ
+ */
+function onGuideDragEnd(e) {
+    if (!appState.guideDragging) return;
+    // ガイドは選択状態のまま保持
+    appState.guideDragging = null;
 }
 
 // ── ガイドリストUI ────────────────────────────────
@@ -403,7 +520,14 @@ export function updateGuideList() {
 
     appState.guides.forEach((guide, index) => {
         const item = document.createElement('div');
-        item.className = 'guide-item';
+        const isSelected = appState.selectedGuideIndex === index;
+        item.className = `guide-item${isSelected ? ' selected' : ''}`;
+
+        // クリックでガイドを選択
+        item.onclick = (e) => {
+            if (e.target.classList.contains('guide-item-delete')) return;
+            selectGuide(index);
+        };
 
         const info = document.createElement('span');
         info.className = 'guide-item-info';
@@ -461,6 +585,8 @@ export function updateGuideList() {
 export function addGuide(type, position) {
     saveToHistory();  // Undo用に現在の状態を保存
     appState.guides.push({ type, position });
+    // 新規作成したガイドを自動選択
+    appState.selectedGuideIndex = appState.guides.length - 1;
     renderGuides();
     updateGuideList();
     // UI改修: ヒントとガイドボタンを更新
@@ -473,6 +599,13 @@ export function addGuide(type, position) {
  */
 export function removeGuide(index) {
     saveToHistory();  // Undo用に現在の状態を保存
+    // 選択中のガイドが削除された場合は選択解除
+    if (appState.selectedGuideIndex === index) {
+        appState.selectedGuideIndex = null;
+    } else if (appState.selectedGuideIndex !== null && appState.selectedGuideIndex > index) {
+        // 削除されたガイドより後ろの選択インデックスを調整
+        appState.selectedGuideIndex--;
+    }
     appState.guides.splice(index, 1);
     renderGuides();
     updateGuideList();
