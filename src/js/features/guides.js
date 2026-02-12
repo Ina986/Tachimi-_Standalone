@@ -424,10 +424,12 @@ export function renderGuides() {
     const scaleX = bounds.displayWidth / appState.previewImageSize.width;
     const scaleY = bounds.displayHeight / appState.previewImageSize.height;
 
+    const isLocked = appState.guidesLocked;
+
     appState.guides.forEach((guide, index) => {
         const line = document.createElement('div');
         const isSelected = appState.selectedGuideIndex === index;
-        line.className = `guide-line ${guide.type === 'h' ? 'horizontal' : 'vertical'}${isSelected ? ' selected' : ''}`;
+        line.className = `guide-line ${guide.type === 'h' ? 'horizontal' : 'vertical'}${isSelected ? ' selected' : ''}${isLocked ? ' locked' : ''}`;
         line.dataset.guideIndex = index;
 
         if (guide.type === 'h') {
@@ -440,27 +442,30 @@ export function renderGuides() {
             line.style.height = '100%';
         }
 
-        // mousedownでドラッグ開始 & 選択
-        line.onmousedown = (e) => {
-            if (e.button !== 0) return;
-            e.stopPropagation();
-            e.preventDefault();
+        // ロック中はマウスイベントを付けない（pointer-events: noneはCSSで制御）
+        if (!isLocked) {
+            // mousedownでドラッグ開始 & 選択
+            line.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                e.stopPropagation();
+                e.preventDefault();
 
-            // 選択状態にする
-            appState.selectedGuideIndex = index;
-            renderGuides();
-            updateGuideList();
+                // 選択状態にする
+                appState.selectedGuideIndex = index;
+                renderGuides();
+                updateGuideList();
 
-            // ドラッグ開始
-            saveToHistory();
-            appState.guideDragging = {
-                index: index,
-                type: guide.type,
-                startMouseX: e.clientX,
-                startMouseY: e.clientY,
-                startPosition: guide.position
+                // ドラッグ開始
+                saveToHistory();
+                appState.guideDragging = {
+                    index: index,
+                    type: guide.type,
+                    startMouseX: e.clientX,
+                    startMouseY: e.clientY,
+                    startPosition: guide.position
+                };
             };
-        };
+        }
 
         container.appendChild(line);
     });
@@ -505,6 +510,33 @@ function onGuideDragEnd(e) {
     if (!appState.guideDragging) return;
     // ガイドは選択状態のまま保持
     appState.guideDragging = null;
+}
+
+// ── ガイドロック ────────────────────────────────────
+
+/**
+ * ガイドのロック状態をトグル
+ */
+export function toggleGuideLock() {
+    appState.guidesLocked = !appState.guidesLocked;
+    if (appState.guidesLocked) {
+        appState.selectedGuideIndex = null;
+        appState.guideDragging = null;
+    }
+    renderGuides();
+    updateGuideList();
+    updateGuideLockButton();
+    if (typeof window.updateCropModeHint === 'function') window.updateCropModeHint();
+}
+
+/**
+ * ロックボタンの表示状態を更新
+ */
+function updateGuideLockButton() {
+    const btn = $('btnLockGuides');
+    if (!btn) return;
+    btn.classList.toggle('active', appState.guidesLocked);
+    btn.title = appState.guidesLocked ? 'ガイドのロックを解除 (L)' : 'ガイドをロック (L)';
 }
 
 // ── ガイドリストUI ────────────────────────────────
@@ -567,6 +599,18 @@ export function updateGuideList() {
     const applyBtn = $('btnApplyGuides');
     if (applyBtn) {
         applyBtn.style.display = (hasEnoughGuides && !unlocked) ? 'block' : 'none';
+    }
+
+    // ロックボタンの表示を更新（機能解除モード + ガイド4本以上のときのみ）
+    const lockBtn = $('btnLockGuides');
+    if (lockBtn) {
+        const showLock = hasEnoughGuides && unlocked;
+        lockBtn.style.display = showLock ? 'flex' : 'none';
+        // ガイドが4本未満になったらロック解除
+        if (!hasEnoughGuides && appState.guidesLocked) {
+            appState.guidesLocked = false;
+        }
+        updateGuideLockButton();
     }
 
     // フローティング削除ボタンの表示を更新（選択範囲とガイドの両方を考慮）

@@ -45,7 +45,8 @@ import {
 import {
     drawRulers, renderGuides, updateGuideList,
     addGuide, removeGuide, applyGuidesToCrop,
-    selectGuide, deselectGuide, moveSelectedGuide
+    selectGuide, deselectGuide, moveSelectedGuide,
+    toggleGuideLock
 } from './features/guides.js';
 
 import {
@@ -180,6 +181,7 @@ function exposeToWindow() {
     window.selectGuide = selectGuide;
     window.deselectGuide = deselectGuide;
     window.moveSelectedGuide = moveSelectedGuide;
+    window.toggleGuideLock = toggleGuideLock;
 }
 
 // ========================================

@@ -8,7 +8,7 @@ import { $ } from '../utils/dom.js';
 import appState from '../core/app-state.js';
 import { COLOR_MAP, JSON_REGISTER_ASPECT_RATIO } from '../features/constants.js';
 import { saveToHistory, clearHistory, onRestore, undo, redo } from '../features/undo-redo.js';
-import { renderGuides, updateGuideList, drawRulers, setupRulerDragEvents, applyGuidesToCrop, selectGuide, deselectGuide, moveSelectedGuide } from '../features/guides.js';
+import { renderGuides, updateGuideList, drawRulers, setupRulerDragEvents, applyGuidesToCrop, selectGuide, deselectGuide, moveSelectedGuide, toggleGuideLock } from '../features/guides.js';
 import { isFeatureUnlocked, updateJsonRegisterButtonVisibility, updateCropInputsDisabledState } from '../features/feature-unlock.js';
 import { updateCropPageNav, loadPreviewImageByIndex, updateCropModeImage } from '../features/preview.js';
 
@@ -131,6 +131,7 @@ export function openCropMode(imageData) {
         appState.guides = [];
         appState.guideMode = null;
         appState.rulerDragging = null;
+        appState.guidesLocked = false;
         renderGuides();
         updateGuideList();
 
@@ -387,8 +388,12 @@ export function updateCropModeHint() {
         message = `あと${remaining}本ガイドを引いてください（計4本必要）`;
     } else if (guideCount >= 4) {
         if (isFeatureUnlocked()) {
-            // 機能解除時はドラッグで範囲を決定
-            message = '\u2713 ガイドを目安にドラッグで範囲を決定';
+            // 機能解除時はドラッグで範囲を決定（ロック状態で案内を切替）
+            if (appState.guidesLocked) {
+                message = '\u2713 ガイドロック中 \u2014 ドラッグで範囲を選択してください';
+            } else {
+                message = 'L キーでガイドをロックすると、ドラッグで範囲を引けます';
+            }
         } else {
             message = '\u2713「ガイドから範囲を設定」をクリック';
         }
@@ -991,6 +996,22 @@ export function setupCropDragEventsFull(container) {
         clickX = Math.max(0, Math.min(clickX, bounds.displayWidth));
         clickY = Math.max(0, Math.min(clickY, bounds.displayHeight));
 
+        // ガイドスナップ（8表示px以内で吸着）
+        if (appState.guides.length > 0) {
+            const snapPx = 8;
+            const scaleX = bounds.displayWidth / appState.previewImageSize.width;
+            const scaleY = bounds.displayHeight / appState.previewImageSize.height;
+            for (const g of appState.guides) {
+                if (g.type === 'v') {
+                    const gx = g.position * scaleX;
+                    if (Math.abs(clickX - gx) < snapPx) clickX = gx;
+                } else {
+                    const gy = g.position * scaleY;
+                    if (Math.abs(clickY - gy) < snapPx) clickY = gy;
+                }
+            }
+        }
+
         // Undo用に現在の状態を保存（ドラッグ開始時）
         saveToHistory();
 
@@ -1039,6 +1060,22 @@ export function setupCropDragEventsFull(container) {
         // 画像範囲内にクランプ
         currentX = Math.max(0, Math.min(currentX, bounds.displayWidth));
         currentY = Math.max(0, Math.min(currentY, bounds.displayHeight));
+
+        // ガイドスナップ（8表示px以内で吸着）
+        if (appState.guides.length > 0) {
+            const snapPx = 8;
+            const scaleX = bounds.displayWidth / appState.previewImageSize.width;
+            const scaleY = bounds.displayHeight / appState.previewImageSize.height;
+            for (const g of appState.guides) {
+                if (g.type === 'v') {
+                    const gx = g.position * scaleX;
+                    if (Math.abs(currentX - gx) < snapPx) currentX = gx;
+                } else {
+                    const gy = g.position * scaleY;
+                    if (Math.abs(currentY - gy) < snapPx) currentY = gy;
+                }
+            }
+        }
 
         // オフセットを加味した表示座標
         let displayCurrentX = currentX + bounds.offsetX;
@@ -1381,6 +1418,21 @@ export function setupCropModeEvents() {
                 resetZoom();
             }
 
+            // L キー: ガイドロックトグル（機能解除モード + ガイド4本以上）
+            if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.altKey) {
+                const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+                if (!inputFocused && appState.guides.length >= 4 && isFeatureUnlocked()) {
+                    e.preventDefault();
+                    toggleGuideLock();
+                    showTemporaryHint(
+                        appState.guidesLocked
+                            ? 'ガイドをロックしました \u2014 ドラッグで選択範囲を引けます'
+                            : 'ガイドのロックを解除しました',
+                        2000
+                    );
+                }
+            }
+
             // スペースキー: パンモード（押し続けている間もpreventDefault）
             if (e.key === ' ') {
                 e.preventDefault();
@@ -1518,6 +1570,19 @@ export function setupCropModeEvents() {
         }
     });
 
+    // ガイドロックボタン
+    $('btnLockGuides').onclick = () => {
+        if (appState.guides.length >= 4 && isFeatureUnlocked()) {
+            toggleGuideLock();
+            showTemporaryHint(
+                appState.guidesLocked
+                    ? 'ガイドをロックしました \u2014 ドラッグで選択範囲を引けます'
+                    : 'ガイドのロックを解除しました',
+                2000
+            );
+        }
+    };
+
     // ガイド機能
     $('btnClearGuides').onclick = () => {
         if (appState.guides.length > 0) {
@@ -1525,6 +1590,7 @@ export function setupCropModeEvents() {
         }
         appState.guides = [];
         appState.selectedGuideIndex = null;
+        appState.guidesLocked = false;
         renderGuides();
         updateGuideList();
         // UI改修: ヒントとガイドボタンを更新
@@ -1551,6 +1617,7 @@ export function setupCropModeEvents() {
         // ガイドをクリア
         appState.guides = [];
         appState.selectedGuideIndex = null;
+        appState.guidesLocked = false;
         renderGuides();
         updateGuideList();
         updateSelectionVisual();

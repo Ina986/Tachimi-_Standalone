@@ -38,6 +38,7 @@ const appState = {
     isFirstCropModeOpen: true,
     guideMode: null,
     rulerDragging: null,
+    guidesLocked: false,
     currentPreviewPageIndex: 0,
     currentZoom: 1.0,
     lastMousePos: { x: 0, y: 0 },
