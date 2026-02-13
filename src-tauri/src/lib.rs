@@ -9,6 +9,67 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::Emitter;
 
+/// 自然順ソート用の比較関数
+/// 文字列中の数値部分を数値として比較する（例: "p2" < "p10"）
+fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    let mut a_chars = a.chars().peekable();
+    let mut b_chars = b.chars().peekable();
+
+    loop {
+        match (a_chars.peek(), b_chars.peek()) {
+            (None, None) => return std::cmp::Ordering::Equal,
+            (None, Some(_)) => return std::cmp::Ordering::Less,
+            (Some(_), None) => return std::cmp::Ordering::Greater,
+            (Some(&ac), Some(&bc)) => {
+                if ac.is_ascii_digit() && bc.is_ascii_digit() {
+                    // 両方が数字: 数値として比較
+                    let mut a_num = String::new();
+                    while let Some(&c) = a_chars.peek() {
+                        if c.is_ascii_digit() {
+                            a_num.push(c);
+                            a_chars.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    let mut b_num = String::new();
+                    while let Some(&c) = b_chars.peek() {
+                        if c.is_ascii_digit() {
+                            b_num.push(c);
+                            b_chars.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    let a_val: u64 = a_num.parse().unwrap_or(0);
+                    let b_val: u64 = b_num.parse().unwrap_or(0);
+                    match a_val.cmp(&b_val) {
+                        std::cmp::Ordering::Equal => {
+                            // 数値が同じなら桁数で比較（先頭ゼロ考慮）
+                            match a_num.len().cmp(&b_num.len()) {
+                                std::cmp::Ordering::Equal => continue,
+                                other => return other,
+                            }
+                        }
+                        other => return other,
+                    }
+                } else {
+                    // 文字として比較（大文字小文字無視）
+                    let al = ac.to_lowercase().next().unwrap_or(ac);
+                    let bl = bc.to_lowercase().next().unwrap_or(bc);
+                    match al.cmp(&bl) {
+                        std::cmp::Ordering::Equal => {
+                            a_chars.next();
+                            b_chars.next();
+                        }
+                        other => return other,
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// 処理キャンセル用のグローバルフラグ
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -73,7 +134,7 @@ async fn get_image_files(folder_path: String) -> Result<Vec<String>, String> {
         }
     }
 
-    files.sort();
+    files.sort_by(|a, b| natural_cmp(a, b));
     Ok(files)
 }
 
@@ -359,8 +420,8 @@ async fn list_folder_contents(folder_path: String) -> Result<FolderContents, Str
         }
     }
 
-    folders.sort();
-    json_files.sort();
+    folders.sort_by(|a, b| natural_cmp(a, b));
+    json_files.sort_by(|a, b| natural_cmp(a, b));
     Ok(FolderContents { folders, json_files })
 }
 
@@ -458,7 +519,7 @@ async fn list_json_files(folder_path: String) -> Result<Vec<String>, String> {
         }
     }
 
-    files.sort();
+    files.sort_by(|a, b| natural_cmp(a, b));
     Ok(files)
 }
 

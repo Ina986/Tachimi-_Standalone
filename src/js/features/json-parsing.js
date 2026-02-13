@@ -10,22 +10,32 @@ import appState from '../core/app-state.js';
  * 作品情報プレビューテキストを取得
  */
 export function getWorkInfoPreviewText() {
-    if (!appState.jsonData) {
+    let label, title, subtitle, version, authorType, author, artist, original;
+
+    if (appState.workInfoSource === 'manual' && appState.manualWorkInfo) {
+        const wi = appState.manualWorkInfo;
+        label = wi.label || '';
+        title = wi.title || '';
+        subtitle = wi.subtitle || '';
+        version = wi.version || '';
+        authorType = wi.authorType || 'single';
+        author = wi.authorType === 'pair' ? '' : (wi.author1 || '');
+        artist = wi.authorType === 'pair' ? (wi.author1 || '') : '';
+        original = wi.author2 || '';
+    } else if (appState.jsonData) {
+        const preset = appState.jsonData.presetData || appState.jsonData;
+        const workInfo = preset.workInfo || {};
+        label = workInfo.label || '';
+        title = workInfo.title || '';
+        subtitle = workInfo.subtitle || '';
+        version = workInfo.volume || '';
+        authorType = workInfo.authorType || 'single';
+        author = workInfo.author || '';
+        artist = workInfo.artist || '';
+        original = workInfo.original || '';
+    } else {
         return '作品情報未設定';
     }
-
-    const preset = appState.jsonData.presetData || appState.jsonData;
-    // workInfoオブジェクトから取得（JSXスクリプトの形式）
-    const workInfo = preset.workInfo || {};
-
-    const label = workInfo.label || '';
-    const title = workInfo.title || '';
-    const subtitle = workInfo.subtitle || '';
-    const version = workInfo.volume || '';
-    const authorType = workInfo.authorType || 'single';
-    const author = workInfo.author || '';
-    const artist = workInfo.artist || '';
-    const original = workInfo.original || '';
 
     let lines = [];
 

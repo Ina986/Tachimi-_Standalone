@@ -60,6 +60,8 @@ import {
 
 import { setupExecutionEvents } from './features/execution.js';
 
+import { setupWorkInfoEvents } from './features/work-info.js';
+
 import { loadSettings, setupSettingsAutoSave } from './features/settings.js';
 
 import { setupUpdateEvents, updateVersionDisplay, checkForUpdateOnStartup } from './features/update-system.js';
@@ -220,6 +222,7 @@ async function init() {
     setupPreviewEvents();
     setupCropModeEvents();
     setupExecutionEvents();
+    setupWorkInfoEvents();
     setupUpdateEvents();
     setupUnlockEvents();
 

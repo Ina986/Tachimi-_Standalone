@@ -58,6 +58,10 @@ const appState = {
         jpeg: false
     },
 
+    // 作品情報の手動入力データ
+    manualWorkInfo: null,   // { label, title, subtitle, version, authorType, author1, author2 }
+    workInfoSource: null,   // 'json' | 'manual' | null
+
     // JSON登録モーダル用状態
     registerModalSelectedFile: null,
     registerModalExistingData: null,

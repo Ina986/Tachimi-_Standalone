@@ -413,6 +413,73 @@
             </div>
         </div>
 
+        <!-- 作品情報ソース選択ダイアログ -->
+        <div id="workInfoChoiceModal" class="confirm-modal" style="display:none;">
+            <div class="confirm-modal-backdrop"></div>
+            <div class="confirm-modal-content">
+                <div class="confirm-modal-header">
+                    <span class="confirm-modal-icon">&#x2139;</span>
+                    <span class="confirm-modal-title">作品情報の入力方法</span>
+                </div>
+                <div class="confirm-modal-body">
+                    <p>作品情報の入力方法を選択してください</p>
+                </div>
+                <div class="confirm-modal-actions work-info-choice-actions">
+                    <button id="workInfoChoiceJson" class="btn work-info-btn">JSON読み込み</button>
+                    <button id="workInfoChoiceManual" class="btn work-info-btn">手動入力</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 手動作品情報入力モーダル -->
+        <div id="manualWorkInfoModal" class="confirm-modal" style="display:none;">
+            <div class="confirm-modal-backdrop"></div>
+            <div class="manual-workinfo-content">
+                <div class="confirm-modal-header">
+                    <span class="confirm-modal-icon">&#x270F;</span>
+                    <span class="confirm-modal-title">作品情報を入力</span>
+                </div>
+                <div class="manual-workinfo-form">
+                    <div class="manual-workinfo-field">
+                        <label for="manualLabel">レーベル</label>
+                        <input type="text" id="manualLabel" placeholder="レーベル名">
+                    </div>
+                    <div class="manual-workinfo-field">
+                        <label for="manualTitle">タイトル</label>
+                        <input type="text" id="manualTitle" placeholder="作品タイトル">
+                    </div>
+                    <div class="manual-workinfo-field">
+                        <label for="manualSubtitle">サブタイトル</label>
+                        <input type="text" id="manualSubtitle" placeholder="サブタイトル（省略可）">
+                    </div>
+                    <div class="manual-workinfo-field">
+                        <label for="manualVersion">巻数</label>
+                        <input type="text" id="manualVersion" placeholder="例: 第1巻">
+                    </div>
+                    <div class="manual-workinfo-field">
+                        <label>著者タイプ</label>
+                        <div class="manual-workinfo-author-type">
+                            <label class="radio-label"><input type="radio" name="manualAuthorType" value="single" checked><span>著（単独）</span></label>
+                            <label class="radio-label"><input type="radio" name="manualAuthorType" value="pair"><span>作画/原作</span></label>
+                            <label class="radio-label"><input type="radio" name="manualAuthorType" value="none"><span>そのまま</span></label>
+                        </div>
+                    </div>
+                    <div class="manual-workinfo-field" id="manualAuthor1Field">
+                        <label for="manualAuthor1" id="manualAuthor1Label">著者</label>
+                        <input type="text" id="manualAuthor1" placeholder="著者名">
+                    </div>
+                    <div class="manual-workinfo-field" id="manualAuthor2Field" style="display:none;">
+                        <label for="manualAuthor2">原作</label>
+                        <input type="text" id="manualAuthor2" placeholder="原作者名">
+                    </div>
+                </div>
+                <div class="confirm-modal-actions">
+                    <button id="btnManualWorkInfoCancel" class="btn confirm-btn-cancel">キャンセル</button>
+                    <button id="btnManualWorkInfoConfirm" class="btn work-info-btn">確定</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 処理中オーバーレイ - 印刷工房デザイン -->
         <div id="processingOverlay" class="processing-overlay" style="display:none;">
             <div class="processing-backdrop"></div>

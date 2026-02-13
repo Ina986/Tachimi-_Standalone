@@ -37,12 +37,26 @@ export function collectSettings() {
         referenceDocSize = { width: appState.previewImageSize.width, height: appState.previewImageSize.height };
     }
 
-    // 作品情報（JSONから取得）- JSX形式に合わせた構造
+    // 作品情報（JSONまたは手動入力から取得）- Rust形式に合わせた構造
     let workInfo = null;
-    if (appState.jsonData) {
+    if (appState.workInfoSource === 'manual' && appState.manualWorkInfo) {
+        const wi = appState.manualWorkInfo;
+        let authorType = 0;
+        if (wi.authorType === 'pair') authorType = 1;
+        else if (wi.authorType === 'none') authorType = 2;
+
+        workInfo = {
+            label: wi.label || '',
+            author_type: authorType,
+            author1: wi.author1 || '',
+            author2: wi.author2 || '',
+            title: wi.title || '',
+            subtitle: wi.subtitle || '',
+            version: wi.version || ''
+        };
+    } else if (appState.jsonData) {
         const preset = appState.jsonData.presetData || appState.jsonData;
         const wi = preset.workInfo || {};
-        // authorTypeの変換: "single"=0, "pair"=1, それ以外=2
         let authorType = 0;
         if (wi.authorType === 'pair') authorType = 1;
         else if (wi.authorType === 'none') authorType = 2;

@@ -124,7 +124,7 @@ export async function handleDroppedPaths(paths) {
             const sep = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'));
             return p.substring(sep + 1);
         });
-        appState.targetFiles.sort();
+        appState.targetFiles.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
         updateFileInfo();
         updateExecuteBtn();

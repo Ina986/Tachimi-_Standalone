@@ -3337,6 +3337,131 @@ input:focus, select:focus {
     border-color: var(--accent);
 }
 
+/* ===== 作品情報入力モーダル ===== */
+
+/* チェックボックスと同じブルースチール配色 */
+.work-info-btn {
+    padding: 8px 20px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: #fff;
+    background: linear-gradient(180deg, #7088a0 0%, #4e6478 100%);
+    border: 1px solid rgba(112, 136, 160, 0.6);
+    box-shadow: 0 2px 8px rgba(112, 136, 160, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.work-info-btn:hover {
+    background: linear-gradient(180deg, #829ab2 0%, #5e7890 100%);
+    box-shadow: 0 4px 12px rgba(112, 136, 160, 0.5);
+    transform: translateY(-1px);
+}
+
+.work-info-btn:active {
+    transform: translateY(0);
+}
+
+.work-info-choice-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.work-info-choice-actions .btn {
+    flex: 1;
+}
+
+#workInfoChoiceModal .confirm-modal-icon {
+    color: #7088a0;
+}
+
+#manualWorkInfoModal .confirm-modal-icon {
+    color: #7088a0;
+}
+
+.manual-workinfo-content {
+    position: relative;
+    background:
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg-deep) 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.6),
+        0 0 1px rgba(255, 255, 255, 0.1) inset;
+    overflow: hidden;
+    animation: confirmSlideIn 0.2s ease-out;
+}
+
+.manual-workinfo-form {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.manual-workinfo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.manual-workinfo-field label {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--text2);
+    font-weight: 500;
+}
+
+.manual-workinfo-field input[type="text"] {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.manual-workinfo-field input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.15);
+}
+
+.manual-workinfo-field input[type="text"]::placeholder {
+    color: var(--text3);
+}
+
+.manual-workinfo-author-type {
+    display: flex;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.manual-workinfo-author-type .radio-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--text2);
+    cursor: pointer;
+}
+
+.manual-workinfo-author-type input[type="radio"] {
+    accent-color: var(--accent);
+}
+
 /* ===== 画像選択モードオーバーレイ - 印刷工房デザイン ===== */
 
 .crop-mode-overlay {

@@ -6,6 +6,8 @@
 import { $ } from '../utils/dom.js';
 import appState from '../core/app-state.js';
 import { COLOR_MAP } from './constants.js';
+import { showWorkInfoChoiceDialog, showManualWorkInfoModal } from './work-info.js';
+import { jsonSelectModal } from './json-modal.js';
 
 /**
  * 出力形式カードの初期化（複数選択対応）
@@ -136,7 +138,37 @@ function setupSpreadPdfEvents() {
     // 作品情報印字チェック
     const workInfo = $('spreadWorkInfo');
     if (workInfo) {
-        workInfo.addEventListener('change', () => {
+        workInfo.addEventListener('change', async () => {
+            if (workInfo.checked) {
+                const choice = await showWorkInfoChoiceDialog();
+
+                if (choice === 'json') {
+                    // 一旦OFFにしてJSON選択後にON
+                    workInfo.checked = false;
+                    const prevCallback = jsonSelectModal.onFileSelected;
+                    jsonSelectModal.onFileSelected = (filePath, data) => {
+                        jsonSelectModal.onFileSelected = prevCallback;
+                        jsonSelectModal.hide();
+                        appState.jsonData = data;
+                        appState.workInfoSource = 'json';
+                        workInfo.checked = true;
+                        if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
+                    };
+                    jsonSelectModal.show();
+                } else if (choice === 'manual') {
+                    const manualData = await showManualWorkInfoModal();
+                    if (manualData) {
+                        appState.manualWorkInfo = manualData;
+                        appState.workInfoSource = 'manual';
+                    } else {
+                        workInfo.checked = false;
+                    }
+                } else {
+                    workInfo.checked = false;
+                }
+            } else {
+                appState.workInfoSource = null;
+            }
             if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
         });
     }

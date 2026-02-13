@@ -392,6 +392,8 @@ export function doResetSettings() {
     }
     if ($('spreadWhitePage')) $('spreadWhitePage').checked = defaults.spreadWhitePage;
     if ($('spreadWorkInfo')) $('spreadWorkInfo').checked = defaults.spreadWorkInfo;
+    appState.manualWorkInfo = null;
+    appState.workInfoSource = null;
     const spreadAddNombre = $('spreadAddNombre');
     if (spreadAddNombre) {
         spreadAddNombre.checked = defaults.spreadAddNombre;
