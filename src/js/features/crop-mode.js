@@ -135,6 +135,29 @@ export function openCropMode(imageData) {
         renderGuides();
         updateGuideList();
 
+        // PSDファイルの場合、埋め込みガイドを読み込む
+        if (imageData.filePath && imageData.filePath.toLowerCase().endsWith('.psd') && appState.invoke) {
+            appState.invoke('get_psd_guides', { filePath: imageData.filePath })
+                .then(guides => {
+                    if (guides && guides.length > 0) {
+                        guides.forEach(g => {
+                            appState.guides.push({
+                                type: g.guide_type,
+                                position: Math.round(g.position)
+                            });
+                        });
+                        renderGuides();
+                        updateGuideList();
+                        if (typeof window.updateCropModeHint === 'function') window.updateCropModeHint();
+                        if (typeof window.updateGuideButtonHighlight === 'function') window.updateGuideButtonHighlight();
+                        setStatus(`PSDから ${guides.length} 本のガイドを読み込みました`);
+                    }
+                })
+                .catch(err => {
+                    console.warn('PSDガイド読み込みエラー:', err);
+                });
+        }
+
         // Undo/Redo履歴をクリア
         clearHistory();
 

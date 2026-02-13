@@ -615,6 +615,13 @@ async fn file_exists(path: String) -> Result<bool, String> {
     Ok(file_path.exists())
 }
 
+/// PSDファイルからガイド情報を取得
+#[tauri::command]
+async fn get_psd_guides(file_path: String) -> Result<Vec<processor::image_loader::PsdGuide>, String> {
+    let path = PathBuf::from(&file_path);
+    processor::image_loader::extract_psd_guides(&path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 並列処理のスレッドプールを初期化（CPUコア数の2倍）
@@ -643,6 +650,7 @@ pub fn run() {
             read_json_file,
             ensure_folder_exists,
             file_exists,
+            get_psd_guides,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -413,7 +413,8 @@ export async function loadPreviewImage(filePath, keepOpen = false) {
         const imageData = {
             width: previewInfo.width,
             height: previewInfo.height,
-            base64: assetUrl  // 互換性のためbase64キーを使用（実際はURL）
+            base64: assetUrl,  // 互換性のためbase64キーを使用（実際はURL）
+            filePath: filePath  // PSDガイド抽出用に元ファイルパスを保持
         };
 
         if (keepOpen) {

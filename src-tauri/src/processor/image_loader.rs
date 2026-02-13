@@ -2,9 +2,19 @@
 //! PSD/PNG/JPEG/TIFFなどの画像読み込みを担当
 
 use ::image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
+use serde::Serialize;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
+
+/// PSDファイルから抽出されたガイド情報
+#[derive(Debug, Clone, Serialize)]
+pub struct PsdGuide {
+    /// "h" = 水平, "v" = 垂直
+    pub guide_type: String,
+    /// ピクセル座標
+    pub position: f64,
+}
 
 /// 画像ファイルを読み込む
 pub fn load_image(path: &Path) -> Result<DynamicImage, String> {
@@ -340,4 +350,98 @@ pub fn extract_psd_thumbnail(path: &Path) -> Option<(DynamicImage, u32, u32)> {
     }
 
     None
+}
+
+/// PSDファイルからガイド情報を抽出
+/// Image Resources セクションの Resource ID 1032 (0x0408) をパース
+pub fn extract_psd_guides(path: &Path) -> Result<Vec<PsdGuide>, String> {
+    let mut file = File::open(path).map_err(|e| format!("ファイルを開けません: {}", e))?;
+    let mut buf4 = [0u8; 4];
+    let mut buf2 = [0u8; 2];
+
+    // PSD signature
+    file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+    if &buf4 != b"8BPS" {
+        return Err("無効なPSDファイル".to_string());
+    }
+
+    // Version (2) + Reserved (6) + Channels (2) + Height (4) + Width (4) + Depth (2) + ColorMode (2)
+    file.seek(SeekFrom::Current(22)).map_err(|e| format!("シークエラー: {}", e))?;
+
+    // Color Mode Data Section — skip
+    file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+    let color_mode_len = u32::from_be_bytes(buf4);
+    file.seek(SeekFrom::Current(color_mode_len as i64)).map_err(|e| format!("シークエラー: {}", e))?;
+
+    // Image Resources Section
+    file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+    let resources_len = u32::from_be_bytes(buf4);
+    let resources_end = file.stream_position().map_err(|e| format!("位置取得エラー: {}", e))? + resources_len as u64;
+
+    // Resource ID 1032 (0x0408) = Grid and guides information を探す
+    while file.stream_position().map_err(|e| format!("位置取得エラー: {}", e))? < resources_end {
+        // Signature "8BIM"
+        file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+        if &buf4 != b"8BIM" {
+            break;
+        }
+
+        // Resource ID (2 bytes)
+        file.read_exact(&mut buf2).map_err(|e| format!("読み込みエラー: {}", e))?;
+        let resource_id = u16::from_be_bytes(buf2);
+
+        // Pascal string name (padded to even)
+        let mut name_len_buf = [0u8; 1];
+        file.read_exact(&mut name_len_buf).map_err(|e| format!("読み込みエラー: {}", e))?;
+        let name_len = name_len_buf[0] as u64;
+        let padded_name_len = if (name_len + 1) % 2 == 0 { name_len } else { name_len + 1 };
+        file.seek(SeekFrom::Current(padded_name_len as i64)).map_err(|e| format!("シークエラー: {}", e))?;
+
+        // Data size (4 bytes)
+        file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+        let data_size = u32::from_be_bytes(buf4);
+
+        if resource_id == 1032 {
+            // Grid and guides resource found
+            // Header: version(4) + gridH(4) + gridV(4) + guideCount(4) = 16 bytes
+            if data_size < 16 {
+                return Ok(vec![]);
+            }
+
+            // Skip grid header (version + horizontal grid + vertical grid)
+            file.seek(SeekFrom::Current(12)).map_err(|e| format!("シークエラー: {}", e))?;
+
+            // Guide count
+            file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+            let guide_count = u32::from_be_bytes(buf4);
+
+            let mut guides = Vec::with_capacity(guide_count as usize);
+
+            for _ in 0..guide_count {
+                // Position: 4 bytes (fixed-point 32bit, 実値 = raw / 32.0 でピクセル)
+                file.read_exact(&mut buf4).map_err(|e| format!("読み込みエラー: {}", e))?;
+                let raw_pos = u32::from_be_bytes(buf4);
+                let position = raw_pos as f64 / 32.0;
+
+                // Direction: 1 byte (0 = vertical, 1 = horizontal)
+                let mut dir_buf = [0u8; 1];
+                file.read_exact(&mut dir_buf).map_err(|e| format!("読み込みエラー: {}", e))?;
+                let guide_type = if dir_buf[0] == 0 { "v" } else { "h" };
+
+                guides.push(PsdGuide {
+                    guide_type: guide_type.to_string(),
+                    position,
+                });
+            }
+
+            return Ok(guides);
+        }
+
+        // Skip this resource (padded to even)
+        let padded_size = if data_size % 2 == 0 { data_size } else { data_size + 1 };
+        file.seek(SeekFrom::Current(padded_size as i64)).map_err(|e| format!("シークエラー: {}", e))?;
+    }
+
+    // ガイドリソースが見つからなかった場合は空配列
+    Ok(vec![])
 }
