@@ -1,6 +1,6 @@
 mod processor;
 
-use processor::{ProcessOptions, ProcessResult, ImageInfo, PreviewFileInfo};
+use processor::{ProcessOptions, ProcessResult, ImageInfo, PreviewFileInfo, WorkInfo, WorkInfoPreview};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde::{Deserialize, Serialize};
@@ -622,6 +622,12 @@ async fn get_psd_guides(file_path: String) -> Result<Vec<processor::image_loader
     processor::image_loader::extract_psd_guides(&path)
 }
 
+/// 作品情報の折り返しプレビューを計算
+#[tauri::command]
+async fn preview_work_info(work_info: WorkInfo, width: u32, height: u32) -> Result<WorkInfoPreview, String> {
+    Ok(processor::pdf::common::compute_work_info_lines(&work_info, width, height))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 並列処理のスレッドプールを初期化（CPUコア数の2倍）
@@ -651,6 +657,7 @@ pub fn run() {
             ensure_folder_exists,
             file_exists,
             get_psd_guides,
+            preview_work_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -669,11 +669,18 @@ export function applyGuidesToCrop() {
     const hGuides = appState.guides.filter(g => g.type === 'h').map(g => g.position).sort((a, b) => a - b);
     const vGuides = appState.guides.filter(g => g.type === 'v').map(g => g.position).sort((a, b) => a - b);
 
-    if (vGuides.length >= 2) {
+    // 4本以上のガイドがある場合は内側のペアを採用
+    if (vGuides.length >= 4) {
+        $('cropLeftFull').value = Math.round(vGuides[1]);
+        $('cropRightFull').value = Math.round(vGuides[vGuides.length - 2]);
+    } else if (vGuides.length >= 2) {
         $('cropLeftFull').value = Math.round(vGuides[0]);
         $('cropRightFull').value = Math.round(vGuides[vGuides.length - 1]);
     }
-    if (hGuides.length >= 2) {
+    if (hGuides.length >= 4) {
+        $('cropTopFull').value = Math.round(hGuides[1]);
+        $('cropBottomFull').value = Math.round(hGuides[hGuides.length - 2]);
+    } else if (hGuides.length >= 2) {
         $('cropTopFull').value = Math.round(hGuides[0]);
         $('cropBottomFull').value = Math.round(hGuides[hGuides.length - 1]);
     }

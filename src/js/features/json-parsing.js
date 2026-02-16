@@ -7,10 +7,11 @@ import { $ } from '../utils/dom.js';
 import appState from '../core/app-state.js';
 
 /**
- * 作品情報プレビューテキストを取得
+ * 作品情報をRust WorkInfo形式に組み立てる（共通処理）
+ * @returns {object|null} { workInfo, authorType } or null
  */
-export function getWorkInfoPreviewText() {
-    let label, title, subtitle, version, authorType, author, artist, original;
+function buildWorkInfoData() {
+    let label, title, subtitle, version, authorType, author1, author2;
 
     if (appState.workInfoSource === 'manual' && appState.manualWorkInfo) {
         const wi = appState.manualWorkInfo;
@@ -19,9 +20,8 @@ export function getWorkInfoPreviewText() {
         subtitle = wi.subtitle || '';
         version = wi.version || '';
         authorType = wi.authorType || 'single';
-        author = wi.authorType === 'pair' ? '' : (wi.author1 || '');
-        artist = wi.authorType === 'pair' ? (wi.author1 || '') : '';
-        original = wi.author2 || '';
+        author1 = wi.author1 || '';
+        author2 = wi.author2 || '';
     } else if (appState.jsonData) {
         const preset = appState.jsonData.presetData || appState.jsonData;
         const workInfo = preset.workInfo || {};
@@ -30,45 +30,92 @@ export function getWorkInfoPreviewText() {
         subtitle = workInfo.subtitle || '';
         version = workInfo.volume || '';
         authorType = workInfo.authorType || 'single';
-        author = workInfo.author || '';
-        artist = workInfo.artist || '';
-        original = workInfo.original || '';
+        author1 = workInfo.author || workInfo.artist || '';
+        author2 = workInfo.original || '';
     } else {
-        return '作品情報未設定';
+        return null;
     }
 
+    let authorTypeNum = 0;
+    if (authorType === 'pair') authorTypeNum = 1;
+    else if (authorType === 'none') authorTypeNum = 2;
+
+    return {
+        workInfo: {
+            label, title, subtitle, version,
+            author_type: authorTypeNum,
+            author1, author2,
+        },
+        authorType,
+    };
+}
+
+/**
+ * 折り返し済み行をHTMLにレンダリング
+ */
+function renderWrappedWorkInfo(preview) {
+    let html = '';
+    if (preview.label && preview.label.length) {
+        html += `<div class="work-info-label">${preview.label.map(escapeHtml).join('<br>')}</div>`;
+    }
+    if (preview.title && preview.title.length) {
+        html += `<div class="work-info-title">${preview.title.map(escapeHtml).join('<br>')}</div>`;
+    }
+    if (preview.subtitle && preview.subtitle.length) {
+        html += `<div class="work-info-subtitle">${preview.subtitle.map(escapeHtml).join('<br>')}</div>`;
+    }
+    if (preview.version && preview.version.length) {
+        html += `<div class="work-info-version">${preview.version.map(escapeHtml).join('<br>')}</div>`;
+    }
+    if (preview.author && preview.author.length) {
+        html += `<div class="work-info-author">${preview.author.map(escapeHtml).join('<br>')}</div>`;
+    }
+    return html || '作品情報未設定';
+}
+
+/**
+ * フォールバック: CSS折り返しに任せる簡易HTML生成
+ */
+function buildFallbackHtml(data) {
+    if (!data) return '作品情報未設定';
+    const wi = data.workInfo;
     let lines = [];
+    if (wi.label) lines.push(`<div class="work-info-label">${escapeHtml(wi.label)}</div>`);
+    if (wi.title) lines.push(`<div class="work-info-title">${escapeHtml(wi.title)}</div>`);
+    if (wi.subtitle) lines.push(`<div class="work-info-subtitle">${escapeHtml(wi.subtitle)}</div>`);
+    if (wi.version) lines.push(`<div class="work-info-version">${escapeHtml(wi.version)}</div>`);
+    if (wi.author1) lines.push(`<div class="work-info-author">${escapeHtml(wi.author1)}</div>`);
+    return lines.length > 0 ? lines.join('') : '作品情報未設定';
+}
 
-    // レーベル
-    if (label) {
-        lines.push(`<div class="work-info-label">${escapeHtml(label)}</div>`);
-    }
-    // タイトル
-    if (title) {
-        lines.push(`<div class="work-info-title">${escapeHtml(title)}</div>`);
-    }
-    // サブタイトル
-    if (subtitle) {
-        lines.push(`<div class="work-info-subtitle">${escapeHtml(subtitle)}</div>`);
-    }
-    // 巻数
-    if (version) {
-        lines.push(`<div class="work-info-version">${escapeHtml(version)}</div>`);
-    }
-    // 著者
-    if (authorType === 'pair' && artist && original) {
-        // 作画/原作分離
-        lines.push(`<div class="work-info-author">作画: ${escapeHtml(artist)}</div>`);
-        lines.push(`<div class="work-info-author">原作: ${escapeHtml(original)}</div>`);
-    } else if (author) {
-        lines.push(`<div class="work-info-author">著: ${escapeHtml(author)}</div>`);
+/**
+ * 作品情報プレビューテキストを取得（Rust側で折り返し計算）
+ */
+export async function getWorkInfoPreviewText() {
+    const data = buildWorkInfoData();
+    if (!data) return '作品情報未設定';
+
+    // 画像サイズ未設定時はデフォルト値を使用（折り返し比率はアスペクト比依存なので概算で十分）
+    let { width, height } = appState.previewImageSize;
+    if (!width || !height) {
+        width = 2150;
+        height = 3035;
     }
 
-    if (lines.length === 0) {
-        return '作品情報未設定';
+    if (!appState.invoke) {
+        return buildFallbackHtml(data);
     }
 
-    return lines.join('');
+    try {
+        const result = await appState.invoke('preview_work_info', {
+            workInfo: data.workInfo,
+            width, height
+        });
+        return renderWrappedWorkInfo(result);
+    } catch (e) {
+        console.warn('preview_work_info failed, using fallback:', e);
+        return buildFallbackHtml(data);
+    }
 }
 
 /**

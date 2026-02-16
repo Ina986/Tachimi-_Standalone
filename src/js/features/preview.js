@@ -161,9 +161,10 @@ export function updateSpreadPreview() {
     if (workInfoEl) {
         workInfoEl.classList.toggle('visible', showWorkInfo && showWhitePage);
         if (showWorkInfo) {
-            // JSONから作品情報を取得して表示
-            const workInfoText = getWorkInfoPreviewText();
-            workInfoEl.innerHTML = workInfoText;
+            // Rust側で折り返し計算してプレビュー表示（非同期）
+            getWorkInfoPreviewText().then(html => {
+                workInfoEl.innerHTML = html;
+            });
         }
     }
 

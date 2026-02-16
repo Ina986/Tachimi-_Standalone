@@ -91,6 +91,16 @@ pub struct WorkInfo {
     pub version: String,      // 巻数
 }
 
+/// 作品情報プレビュー（折り返し済み行データ）
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct WorkInfoPreview {
+    pub label: Vec<String>,
+    pub title: Vec<String>,
+    pub subtitle: Vec<String>,
+    pub version: Vec<String>,
+    pub author: Vec<String>,
+}
+
 /// PDFオプション
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PdfOptions {
