@@ -410,15 +410,11 @@ export function updateCropModeHint() {
         const remaining = 4 - guideCount;
         message = `あと${remaining}本ガイドを引いてください（計4本必要）`;
     } else if (guideCount >= 4) {
-        if (isFeatureUnlocked()) {
-            // 機能解除時はドラッグで範囲を決定（ロック状態で案内を切替）
-            if (appState.guidesLocked) {
-                message = '\u2713 ガイドロック中 \u2014 ドラッグで範囲を選択してください';
-            } else {
-                message = 'L キーでガイドをロックすると、ドラッグで範囲を引けます';
-            }
+        // ガイド4本以上：ロック状態で案内を切替
+        if (appState.guidesLocked) {
+            message = '\u2713 ガイドロック中 \u2014 ドラッグで範囲を選択してください';
         } else {
-            message = '\u2713「ガイドから範囲を設定」をクリック';
+            message = 'L キーでガイドをロックすると、ドラッグで範囲を引けます';
         }
         highlight = true;
     }
@@ -1444,7 +1440,7 @@ export function setupCropModeEvents() {
             // L キー: ガイドロックトグル（機能解除モード + ガイド4本以上）
             if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.altKey) {
                 const inputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-                if (!inputFocused && appState.guides.length >= 4 && isFeatureUnlocked()) {
+                if (!inputFocused && appState.guides.length >= 4) {
                     e.preventDefault();
                     toggleGuideLock();
                     showTemporaryHint(
@@ -1595,7 +1591,7 @@ export function setupCropModeEvents() {
 
     // ガイドロックボタン
     $('btnLockGuides').onclick = () => {
-        if (appState.guides.length >= 4 && isFeatureUnlocked()) {
+        if (appState.guides.length >= 4) {
             toggleGuideLock();
             showTemporaryHint(
                 appState.guidesLocked

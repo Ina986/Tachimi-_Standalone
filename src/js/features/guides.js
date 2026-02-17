@@ -601,10 +601,10 @@ export function updateGuideList() {
         applyBtn.style.display = (hasEnoughGuides && !unlocked) ? 'block' : 'none';
     }
 
-    // ロックボタンの表示を更新（機能解除モード + ガイド4本以上のときのみ）
+    // ロックボタンの表示を更新（ガイド4本以上のとき表示）
     const lockBtn = $('btnLockGuides');
     if (lockBtn) {
-        const showLock = hasEnoughGuides && unlocked;
+        const showLock = hasEnoughGuides;
         lockBtn.style.display = showLock ? 'flex' : 'none';
         // ガイドが4本未満になったらロック解除
         if (!hasEnoughGuides && appState.guidesLocked) {
