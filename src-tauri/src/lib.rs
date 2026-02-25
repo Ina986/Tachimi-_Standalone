@@ -73,10 +73,27 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 /// CLI引数で渡されたファイルパス（起動時に一度だけ取得）
 static CLI_FILES: Mutex<Option<Vec<String>>> = Mutex::new(None);
 
-/// CLI引数からファイルパスを取得（フロントエンド初期化後に呼ばれる）
+/// CLI引数 または トリガーファイルからファイルパスを取得（フロントエンド初期化後に呼ばれる）
 #[tauri::command]
 async fn get_cli_files() -> Option<Vec<String>> {
-    CLI_FILES.lock().unwrap().take()
+    // 1. まずCLI引数から（setup()で保存済み）
+    if let Some(paths) = CLI_FILES.lock().unwrap().take() {
+        return Some(paths);
+    }
+    // 2. トリガーファイルから（COMIC-Bridge等が書き出したJSON）
+    let trigger_path = std::env::temp_dir().join("tachimi_cli_files.json");
+    if trigger_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&trigger_path) {
+            // 読み込んだら即削除（二重読み込み防止）
+            let _ = std::fs::remove_file(&trigger_path);
+            if let Ok(paths) = serde_json::from_str::<Vec<String>>(&content) {
+                if !paths.is_empty() {
+                    return Some(paths);
+                }
+            }
+        }
+    }
+    None
 }
 
 /// 処理キャンセル用のグローバルフラグ
@@ -648,8 +665,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|_app| {
-            // CLI引数 --files <json_path> でファイルパスをstateに保存
-            // フロントエンド初期化後に get_cli_files コマンドで取得される
+            // CLI引数 --files <json_path> でファイルパスをstateに保存（フォールバック）
             let args: Vec<String> = std::env::args().collect();
             if let Some(pos) = args.iter().position(|a| a == "--files") {
                 if let Some(json_path) = args.get(pos + 1) {
