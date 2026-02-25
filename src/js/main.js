@@ -226,16 +226,6 @@ async function init() {
     setupUpdateEvents();
     setupUnlockEvents();
 
-    // CLI引数からのファイル読み込み（COMIC-Bridge等からの連携用）
-    if (appState.listen) {
-        appState.listen('cli-files-loaded', async (event) => {
-            const paths = event.payload;
-            if (paths && paths.length > 0) {
-                await handleDroppedPaths(paths);
-            }
-        });
-    }
-
     // 5. タチキリ設定・実行ボタンの初期化
     updateTachikiriSettings();
     updateExecuteBtn();
@@ -252,6 +242,18 @@ async function init() {
 
     // 9. 起動時のアップデート確認（バックグラウンド）
     checkForUpdateOnStartup();
+
+    // 10. CLI引数からのファイル読み込み（COMIC-Bridge等からの連携用）
+    if (appState.invoke) {
+        try {
+            const cliFiles = await appState.invoke('get_cli_files');
+            if (cliFiles && cliFiles.length > 0) {
+                await handleDroppedPaths(cliFiles);
+            }
+        } catch (e) {
+            console.warn('CLI引数の取得に失敗:', e);
+        }
+    }
 
     console.log('タチミ初期化完了');
 }

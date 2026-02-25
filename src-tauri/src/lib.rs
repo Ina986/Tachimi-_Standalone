@@ -70,6 +70,15 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
 }
 
+/// CLI引数で渡されたファイルパス（起動時に一度だけ取得）
+static CLI_FILES: Mutex<Option<Vec<String>>> = Mutex::new(None);
+
+/// CLI引数からファイルパスを取得（フロントエンド初期化後に呼ばれる）
+#[tauri::command]
+async fn get_cli_files() -> Option<Vec<String>> {
+    CLI_FILES.lock().unwrap().take()
+}
+
 /// 処理キャンセル用のグローバルフラグ
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -638,14 +647,15 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
-            // CLI引数 --files <json_path> でファイルパスを受け取る
+        .setup(|_app| {
+            // CLI引数 --files <json_path> でファイルパスをstateに保存
+            // フロントエンド初期化後に get_cli_files コマンドで取得される
             let args: Vec<String> = std::env::args().collect();
             if let Some(pos) = args.iter().position(|a| a == "--files") {
                 if let Some(json_path) = args.get(pos + 1) {
                     if let Ok(content) = std::fs::read_to_string(json_path) {
                         if let Ok(paths) = serde_json::from_str::<Vec<String>>(&content) {
-                            app.emit("cli-files-loaded", &paths)?;
+                            *CLI_FILES.lock().unwrap() = Some(paths);
                         }
                     }
                 }
@@ -653,6 +663,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            get_cli_files,
             get_image_files,
             get_image_preview,
             get_image_preview_as_file,
