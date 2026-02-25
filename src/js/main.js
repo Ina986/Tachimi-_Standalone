@@ -249,6 +249,8 @@ async function init() {
             const cliFiles = await appState.invoke('get_cli_files');
             if (cliFiles && cliFiles.length > 0) {
                 await handleDroppedPaths(cliFiles);
+                // クロップモードを自動起動（最初のファイルでプレビュー）
+                await loadPreviewImageByIndex(0);
             }
         } catch (e) {
             console.warn('CLI引数の取得に失敗:', e);
