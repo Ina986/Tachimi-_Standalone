@@ -638,6 +638,20 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            // CLI引数 --files <json_path> でファイルパスを受け取る
+            let args: Vec<String> = std::env::args().collect();
+            if let Some(pos) = args.iter().position(|a| a == "--files") {
+                if let Some(json_path) = args.get(pos + 1) {
+                    if let Ok(content) = std::fs::read_to_string(json_path) {
+                        if let Ok(paths) = serde_json::from_str::<Vec<String>>(&content) {
+                            app.emit("cli-files-loaded", &paths)?;
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_image_files,
             get_image_preview,

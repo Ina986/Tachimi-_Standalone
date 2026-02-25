@@ -21,7 +21,7 @@ import { showAlert, showConfirm } from './ui/alerts.js';
 // === フィーチャーモジュール ===
 import {
     setupFileHandlingEvents, initDefaultOutputFolder, setStatus,
-    updateExecuteBtn, updateOutputInfo, updateFileInfo
+    updateExecuteBtn, updateOutputInfo, updateFileInfo, handleDroppedPaths
 } from './features/file-handling.js';
 
 import { setupJsonParsingEvents } from './features/json-parsing.js';
@@ -225,6 +225,16 @@ async function init() {
     setupWorkInfoEvents();
     setupUpdateEvents();
     setupUnlockEvents();
+
+    // CLI引数からのファイル読み込み（COMIC-Bridge等からの連携用）
+    if (appState.listen) {
+        appState.listen('cli-files-loaded', async (event) => {
+            const paths = event.payload;
+            if (paths && paths.length > 0) {
+                await handleDroppedPaths(paths);
+            }
+        });
+    }
 
     // 5. タチキリ設定・実行ボタンの初期化
     updateTachikiriSettings();
