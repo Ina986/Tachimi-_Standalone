@@ -11,7 +11,7 @@ pub mod pdf;
 // 型のre-export
 pub use types::{
     ImageInfo, PreviewFileInfo, ProcessOptions, ProcessResult,
-    PdfOptions, WorkInfo, WorkInfoPreview,
+    PdfOptions, WorkInfo, WorkInfoPreview, FileEntry,
 };
 
 // キャッシュ関連のre-export

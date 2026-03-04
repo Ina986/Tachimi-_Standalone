@@ -19,6 +19,8 @@ const appState = {
     inputFolder: null,
     targetFiles: [],
     outputFolder: null,
+    subfolderMode: false,
+    fileEntries: [],
     jsonData: null,
     selectionRanges: [],
     selectedRange: null,

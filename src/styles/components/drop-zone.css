@@ -225,3 +225,43 @@
     background: var(--error);
     color: white;
 }
+
+/* サブフォルダトグル（ドロップエリア直下・右寄せ） */
+.subfolder-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 3px;
+    margin-bottom: 2px;
+}
+
+.subfolder-toggle {
+    font-size: 11px;
+    gap: 6px;
+    color: var(--text3);
+}
+
+.subfolder-toggle:hover {
+    color: var(--text2);
+}
+
+.subfolder-toggle input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    background: transparent;
+}
+
+.subfolder-toggle input[type="checkbox"]:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: none;
+}
+
+.subfolder-toggle input[type="checkbox"]:checked {
+    border-color: transparent;
+}
+
+.subfolder-toggle input[type="checkbox"]:checked::after {
+    font-size: 11px;
+}

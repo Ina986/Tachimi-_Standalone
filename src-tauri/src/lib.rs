@@ -1,6 +1,6 @@
 mod processor;
 
-use processor::{ProcessOptions, ProcessResult, ImageInfo, PreviewFileInfo, WorkInfo, WorkInfoPreview};
+use processor::{ProcessOptions, ProcessResult, ImageInfo, PreviewFileInfo, WorkInfo, WorkInfoPreview, FileEntry};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde::{Deserialize, Serialize};
@@ -164,6 +164,68 @@ async fn get_image_files(folder_path: String) -> Result<Vec<String>, String> {
     Ok(files)
 }
 
+/// フォルダ内の画像ファイル一覧を再帰的に取得（サブフォルダ対応）
+#[tauri::command]
+async fn get_image_files_recursive(folder_path: String) -> Result<Vec<FileEntry>, String> {
+    let base_path = PathBuf::from(&folder_path);
+    if !base_path.exists() {
+        return Err("フォルダが存在しません".to_string());
+    }
+
+    // フォルダ切り替え時にPSDキャッシュをクリア
+    processor::clear_psd_cache();
+
+    let extensions = ["png", "jpg", "jpeg", "gif", "webp", "psd", "tif", "tiff"];
+    let mut entries: Vec<FileEntry> = Vec::new();
+
+    for entry in walkdir::WalkDir::new(&base_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                let ext_lower = ext.to_string_lossy().to_lowercase();
+                if extensions.contains(&ext_lower.as_str()) {
+                    if let Ok(rel) = path.strip_prefix(&base_path) {
+                        let relative_path = rel.to_string_lossy().to_string()
+                            .replace('\\', "/");
+
+                        let subfolder = rel.parent()
+                            .map(|p| p.to_string_lossy().to_string().replace('\\', "/"))
+                            .unwrap_or_default();
+
+                        entries.push(FileEntry {
+                            relative_path,
+                            subfolder,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // ソート: ルート直下ファイル → サブフォルダ内ファイル（自然順）
+    entries.sort_by(|a, b| {
+        let a_is_root = a.subfolder.is_empty();
+        let b_is_root = b.subfolder.is_empty();
+        match (a_is_root, b_is_root) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => {
+                let folder_cmp = natural_cmp(&a.subfolder, &b.subfolder);
+                if folder_cmp != std::cmp::Ordering::Equal {
+                    folder_cmp
+                } else {
+                    natural_cmp(&a.relative_path, &b.relative_path)
+                }
+            }
+        }
+    });
+
+    Ok(entries)
+}
+
 /// PSDキャッシュをクリア
 #[tauri::command]
 async fn clear_psd_cache() {
@@ -285,20 +347,23 @@ async fn process_images(
         });
 
         let input_file = input_path.join(filename);
-        let output_file = match PathBuf::from(filename)
-            .with_extension("jpg")
-            .file_name()
-        {
-            Some(name) => output_path.join(name),
-            None => {
-                if let Ok(mut errs) = errors.lock() {
-                    errs.push(format!("{}: 無効なファイル名", filename));
+        // 相対パス（例: "chapter01/p001.psd"）の場合、サブフォルダ構造を出力にミラー
+        let relative_jpg = PathBuf::from(filename).with_extension("jpg");
+        let output_file = output_path.join(&relative_jpg);
+
+        // 出力サブフォルダが存在しない場合は作成
+        if let Some(parent) = output_file.parent() {
+            if !parent.exists() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    if let Ok(mut errs) = errors.lock() {
+                        errs.push(format!("{}: 出力サブフォルダの作成に失敗: {}", filename, e));
+                    }
+                    in_progress.fetch_sub(1, Ordering::SeqCst);
+                    processed.fetch_add(1, Ordering::SeqCst);
+                    return;
                 }
-                in_progress.fetch_sub(1, Ordering::SeqCst);
-                processed.fetch_add(1, Ordering::SeqCst);
-                return;
             }
-        };
+        }
 
         // ページ番号 = 開始番号 + インデックス
         let page_number = options.nombre_start_number + index as u32;
@@ -681,6 +746,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_cli_files,
             get_image_files,
+            get_image_files_recursive,
             get_image_preview,
             get_image_preview_as_file,
             process_images,

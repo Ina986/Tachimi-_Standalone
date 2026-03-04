@@ -33,6 +33,7 @@ export async function initDefaultOutputFolder() {
 export async function resetFileSelection() {
     appState.inputFolder = null;
     appState.targetFiles = [];
+    appState.fileEntries = [];
     appState.jsonData = null;
     appState.selectionRanges = [];
     appState.selectedRange = null;
@@ -86,15 +87,28 @@ export async function handleDroppedPaths(paths) {
         // フォルダがドロップされた場合
         try {
             setStatus('フォルダを読み込み中...');
-            const files = await appState.invoke('get_image_files', { folderPath: firstPath });
 
-            if (files.length === 0) {
-                setStatus('フォルダ内に対応する画像ファイルがありません');
-                return;
+            if (appState.subfolderMode) {
+                // サブフォルダモード: 再帰的にファイル収集
+                const entries = await appState.invoke('get_image_files_recursive', { folderPath: firstPath });
+                if (entries.length === 0) {
+                    setStatus('フォルダ内に対応する画像ファイルがありません');
+                    return;
+                }
+                appState.inputFolder = firstPath;
+                appState.fileEntries = entries;
+                appState.targetFiles = entries.map(e => e.relative_path);
+            } else {
+                // 通常モード: トップレベルのみ
+                const files = await appState.invoke('get_image_files', { folderPath: firstPath });
+                if (files.length === 0) {
+                    setStatus('フォルダ内に対応する画像ファイルがありません');
+                    return;
+                }
+                appState.inputFolder = firstPath;
+                appState.fileEntries = files.map(f => ({ relative_path: f, subfolder: '' }));
+                appState.targetFiles = files;
             }
-
-            appState.inputFolder = firstPath;
-            appState.targetFiles = files;
 
             updateFileInfo();
             updateExecuteBtn();
@@ -172,7 +186,17 @@ export function updateFileInfo() {
         // フォルダ名から出力ファイル名を設定
         updateOutputNameFromFolder();
     } else {
-        $('fileInfo').textContent = `${appState.targetFiles.length} ファイル選択済み`;
+        // サブフォルダモード時はフォルダ数も表示
+        if (appState.subfolderMode && appState.fileEntries.length > 0) {
+            const subfolders = new Set(appState.fileEntries.map(e => e.subfolder).filter(s => s !== ''));
+            if (subfolders.size > 0) {
+                $('fileInfo').textContent = `${appState.targetFiles.length} ファイル（${subfolders.size} フォルダ）`;
+            } else {
+                $('fileInfo').textContent = `${appState.targetFiles.length} ファイル選択済み`;
+            }
+        } else {
+            $('fileInfo').textContent = `${appState.targetFiles.length} ファイル選択済み`;
+        }
         if (dropArea) dropArea.classList.add('has-files');
         if (emptyState) emptyState.style.display = 'none';
         if (loadedState) loadedState.style.display = 'flex';
@@ -280,24 +304,26 @@ export function setupFileHandlingEvents() {
 
     // ドロップエリアをクリックでフォルダ選択
     if (dropZone) {
-        dropZone.onclick = async () => {
+        dropZone.onclick = async (e) => {
+            // サブフォルダトグルのクリックはフォルダ選択ダイアログを開かない
+            if (e.target.closest('.subfolder-toggle')) return;
             const folder = await appState.openDialog({ directory: true });
             if (folder) {
-                try {
-                    const files = await appState.invoke('get_image_files', { folderPath: folder });
-                    if (files.length === 0) {
-                        setStatus('フォルダ内に対応する画像ファイルがありません');
-                        return;
-                    }
-                    appState.inputFolder = folder;
-                    appState.targetFiles = files;
-                    updateFileInfo();
-                    setStatus(`${appState.targetFiles.length} ファイルを読み込みました`);
-                } catch (e) {
-                    setStatus('エラー: ' + e);
-                }
+                await handleDroppedPaths([folder]);
             }
         };
+    }
+
+    // サブフォルダトグル
+    const subfolderToggle = $('subfolderToggle');
+    if (subfolderToggle) {
+        subfolderToggle.addEventListener('change', async () => {
+            appState.subfolderMode = subfolderToggle.checked;
+            // フォルダが既に読み込まれている場合は再スキャン
+            if (appState.inputFolder) {
+                await handleDroppedPaths([appState.inputFolder]);
+            }
+        });
     }
 
     // 出力フォルダ選択

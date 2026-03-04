@@ -959,6 +959,45 @@ body {
     font-weight: 600;
 }
 
+/* サブフォルダトグル（ドロップエリア直下・右寄せ） */
+.subfolder-toggle-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 3px;
+    margin-bottom: 2px;
+}
+
+.subfolder-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text3);
+    cursor: pointer;
+}
+
+.subfolder-toggle:hover {
+    color: var(--text2);
+}
+
+.subfolder-toggle input[type="checkbox"] {
+    appearance: auto;
+    -webkit-appearance: auto;
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+    accent-color: var(--accent);
+    opacity: 0.6;
+}
+
+.subfolder-toggle:hover input[type="checkbox"] {
+    opacity: 0.85;
+}
+
+.subfolder-toggle input[type="checkbox"]:checked {
+    opacity: 1;
+}
+
 /* 詳細パネル内のチェックボックスは強調 */
 .output-detail-panel .checkbox-sm {
     font-size: 13px;

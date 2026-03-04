@@ -63,6 +63,15 @@ pub fn default_resize_percent() -> u32 { 50 }
 pub const TARGET_RESIZE_WIDTH: u32 = 2250;
 pub const TARGET_RESIZE_HEIGHT: u32 = 3000;
 
+/// サブフォルダ対応ファイルエントリ
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileEntry {
+    /// ベースフォルダからの相対パス（例: "chapter01/p001.psd" or "p001.psd"）
+    pub relative_path: String,
+    /// 所属するサブフォルダ名（ルート直下は空文字列）
+    pub subfolder: String,
+}
+
 /// 処理結果
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessResult {

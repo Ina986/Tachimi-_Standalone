@@ -39,6 +39,9 @@ export function saveSettings() {
             singleNombreStart: parseInt($('singleNombreStart')?.value) || 1,
             singleNombreSize: $('singleNombreSize')?.value || 'small',
 
+            // サブフォルダ
+            subfolderMode: appState.subfolderMode,
+
             // JPEG設定
             jpegAddNombre: $('jpegAddNombre')?.checked ?? false,
             jpegNombreStart: parseInt($('jpegNombreStart')?.value) || 1,
@@ -93,6 +96,13 @@ export function loadSettings() {
         });
         // パネル表示を更新
         if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
+
+        // サブフォルダモード
+        if (settings.subfolderMode !== undefined) {
+            appState.subfolderMode = settings.subfolderMode;
+            const toggle = $('subfolderToggle');
+            if (toggle) toggle.checked = settings.subfolderMode;
+        }
 
         // タチキリ処理
         if (settings.tachikiriType) {
@@ -226,6 +236,8 @@ export function loadSettings() {
 export function setupSettingsAutoSave() {
     // 監視対象の要素IDリスト
     const watchIds = [
+        // サブフォルダ
+        'subfolderToggle',
         // タチキリ
         'tachikiriSelect', 'fillColor', 'strokeColor',
         // 見開きPDF
@@ -332,6 +344,11 @@ export function doResetSettings() {
     });
     // パネル表示を更新
     if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
+
+    // サブフォルダモードをリセット
+    appState.subfolderMode = false;
+    const subfolderToggle = $('subfolderToggle');
+    if (subfolderToggle) subfolderToggle.checked = false;
 
     // デフォルト値を適用
     const defaults = {
