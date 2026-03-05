@@ -62,13 +62,13 @@ export function collectSettings() {
         else if (wi.authorType === 'none') authorType = 2;
 
         workInfo = {
-            label: wi.label || '',
+            label: String(wi.label || ''),
             author_type: authorType,
-            author1: wi.artist || wi.author || '',  // 作画 or 著者
-            author2: wi.original || '',              // 原作
-            title: wi.title || '',
-            subtitle: wi.subtitle || '',
-            version: wi.volume || ''
+            author1: String(wi.artist || wi.author || ''),  // 作画 or 著者
+            author2: String(wi.original || ''),              // 原作
+            title: String(wi.title || ''),
+            subtitle: String(wi.subtitle || ''),
+            version: String(wi.volume || '')
         };
     }
 

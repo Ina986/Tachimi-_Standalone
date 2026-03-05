@@ -25,13 +25,13 @@ function buildWorkInfoData() {
     } else if (appState.jsonData) {
         const preset = appState.jsonData.presetData || appState.jsonData;
         const workInfo = preset.workInfo || {};
-        label = workInfo.label || '';
-        title = workInfo.title || '';
-        subtitle = workInfo.subtitle || '';
-        version = workInfo.volume || '';
+        label = String(workInfo.label || '');
+        title = String(workInfo.title || '');
+        subtitle = String(workInfo.subtitle || '');
+        version = String(workInfo.volume || '');
         authorType = workInfo.authorType || 'single';
-        author1 = workInfo.author || workInfo.artist || '';
-        author2 = workInfo.original || '';
+        author1 = String(workInfo.author || workInfo.artist || '');
+        author2 = String(workInfo.original || '');
     } else {
         return null;
     }
