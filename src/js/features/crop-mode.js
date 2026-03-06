@@ -146,6 +146,11 @@ export function openCropMode(imageData) {
                                 position: Math.round(g.position)
                             });
                         });
+                        // ガイドが4本以上あればデフォルトでロックをかける
+                        if (appState.guides.length >= 4) {
+                            appState.guidesLocked = true;
+                            appState.selectedGuideIndex = null;
+                        }
                         renderGuides();
                         updateGuideList();
                         if (typeof window.updateCropModeHint === 'function') window.updateCropModeHint();
