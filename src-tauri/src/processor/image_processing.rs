@@ -151,22 +151,27 @@ fn apply_resize(img: DynamicImage, options: &ProcessOptions) -> DynamicImage {
     }
 }
 
-/// 画像の境界に線を描画
+/// 画像の境界に線を描画（5px幅）
 pub fn draw_stroke(img: &mut RgbaImage, color: &str) {
     let (width, height) = img.dimensions();
     let stroke_color = color_to_rgb(color);
+    let thickness: u32 = 5;
 
     for x in 0..width {
-        img.put_pixel(x, 0, stroke_color);
-        img.put_pixel(x, height - 1, stroke_color);
+        for t in 0..thickness.min(height) {
+            img.put_pixel(x, t, stroke_color);
+            img.put_pixel(x, height - 1 - t, stroke_color);
+        }
     }
     for y in 0..height {
-        img.put_pixel(0, y, stroke_color);
-        img.put_pixel(width - 1, y, stroke_color);
+        for t in 0..thickness.min(width) {
+            img.put_pixel(t, y, stroke_color);
+            img.put_pixel(width - 1 - t, y, stroke_color);
+        }
     }
 }
 
-/// 指定座標に線を描画
+/// 指定座標に線を描画（5px幅）
 pub fn draw_stroke_at_crop(
     img: &mut RgbaImage,
     left: u32,
@@ -176,21 +181,36 @@ pub fn draw_stroke_at_crop(
     color: &str,
 ) {
     let stroke_color = color_to_rgb(color);
+    let thickness: u32 = 5;
+    let img_w = img.width();
+    let img_h = img.height();
 
     for x in left..right {
-        if top < img.height() {
-            img.put_pixel(x, top, stroke_color);
-        }
-        if bottom > 0 && bottom - 1 < img.height() {
-            img.put_pixel(x, bottom - 1, stroke_color);
+        for t in 0..thickness {
+            let y_top = top + t;
+            if y_top < img_h {
+                img.put_pixel(x, y_top, stroke_color);
+            }
+            if bottom > t {
+                let y_bot = bottom - 1 - t;
+                if y_bot < img_h && y_bot >= top {
+                    img.put_pixel(x, y_bot, stroke_color);
+                }
+            }
         }
     }
     for y in top..bottom {
-        if left < img.width() {
-            img.put_pixel(left, y, stroke_color);
-        }
-        if right > 0 && right - 1 < img.width() {
-            img.put_pixel(right - 1, y, stroke_color);
+        for t in 0..thickness {
+            let x_left = left + t;
+            if x_left < img_w {
+                img.put_pixel(x_left, y, stroke_color);
+            }
+            if right > t {
+                let x_right = right - 1 - t;
+                if x_right < img_w && x_right >= left {
+                    img.put_pixel(x_right, y, stroke_color);
+                }
+            }
         }
     }
 }
