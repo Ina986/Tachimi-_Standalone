@@ -30,7 +30,8 @@
                 <div class="drop-area" id="dropZone">
                     <div class="drop-area-empty" id="dropAreaEmpty">
                         <div class="drop-area-icon">📁</div>
-                        <div class="drop-area-text">ファイル/フォルダをドロップ</div>
+                        <div class="drop-area-text">ファイル/フォルダを読み込み</div>
+                        <div class="drop-area-subtext">ドラッグ＆ドロップ可能</div>
                     </div>
                     <div class="drop-area-loaded" id="dropAreaLoaded" style="display:none;">
                         <div class="drop-area-file-icon">✓</div>
@@ -39,11 +40,11 @@
                     </div>
                     <div class="drop-area-hint">ここにドロップ</div>
                 </div>
-                <div class="subfolder-toggle-row">
-                    <label class="subfolder-toggle">
-                        <input type="checkbox" id="subfolderToggle">
-                        <span>サブフォルダを含む</span>
-                    </label>
+                <div class="subfolder-toggle-row" id="splitPdfRow" style="display:none;">
+                    <div class="split-pdf-toggle">
+                        <button type="button" class="split-pdf-btn active" id="btnPdfMerged" title="すべてのフォルダを1つのPDFにまとめる">単一PDFで出力</button>
+                        <button type="button" class="split-pdf-btn" id="btnPdfSplit" title="フォルダごとに別々のPDFを生成する">分割PDFで出力</button>
+                    </div>
                 </div>
 
                 <!-- 出力設定 -->

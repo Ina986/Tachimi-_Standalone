@@ -62,6 +62,10 @@ export async function resetFileSelection() {
     if (emptyState) emptyState.style.display = 'flex';
     if (loadedState) loadedState.style.display = 'none';
 
+    // サブフォルダモードをリセット
+    appState.subfolderMode = false;
+    if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
+
     // 出力フォルダをデフォルトに戻す
     await initDefaultOutputFolder();
 
@@ -81,60 +85,80 @@ export async function handleDroppedPaths(paths) {
     const firstPath = paths[0];
 
     // フォルダかファイルかを判定（拡張子の有無で判断）
-    const hasExtension = supportedExts.some(ext => firstPath.toLowerCase().endsWith('.' + ext));
+    const isFile = (p) => supportedExts.some(ext => p.toLowerCase().endsWith('.' + ext));
+    const folderPaths = paths.filter(p => !isFile(p));
+    const filePaths = paths.filter(p => isFile(p));
 
-    if (!hasExtension && paths.length === 1) {
-        // フォルダがドロップされた場合
+    if (folderPaths.length > 0) {
+        // フォルダがドロップされた場合（単一 or 複数）
         try {
             setStatus('フォルダを読み込み中...');
 
-            if (appState.subfolderMode) {
-                // サブフォルダモード: 再帰的にファイル収集
-                const entries = await appState.invoke('get_image_files_recursive', { folderPath: firstPath });
+            if (folderPaths.length === 1) {
+                // 単一フォルダ: 再帰的にファイル収集
+                const entries = await appState.invoke('get_image_files_recursive', { folderPath: folderPaths[0] });
                 if (entries.length === 0) {
                     setStatus('フォルダ内に対応する画像ファイルがありません');
                     return;
                 }
-                appState.inputFolder = firstPath;
+                appState.inputFolder = folderPaths[0];
                 appState.fileEntries = entries;
                 appState.targetFiles = entries.map(e => e.relative_path);
             } else {
-                // 通常モード: トップレベルのみ
-                const files = await appState.invoke('get_image_files', { folderPath: firstPath });
-                if (files.length === 0) {
+                // 複数フォルダ: 共通親ディレクトリを基準に各フォルダを再帰スキャン
+                // 共通親ディレクトリを算出
+                const getParent = (p) => {
+                    const sep = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'));
+                    return sep >= 0 ? p.substring(0, sep) : p;
+                };
+                const getFolderName = (p) => {
+                    const sep = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'));
+                    return sep >= 0 ? p.substring(sep + 1) : p;
+                };
+                const parentDir = getParent(folderPaths[0]);
+
+                let allEntries = [];
+                for (const folderPath of folderPaths) {
+                    const folderName = getFolderName(folderPath);
+                    const entries = await appState.invoke('get_image_files_recursive', { folderPath });
+                    for (const entry of entries) {
+                        const relativePath = folderName + '/' + entry.relative_path;
+                        const subfolder = entry.subfolder
+                            ? folderName + '/' + entry.subfolder
+                            : folderName;
+                        allEntries.push({ relative_path: relativePath, subfolder });
+                    }
+                }
+
+                if (allEntries.length === 0) {
                     setStatus('フォルダ内に対応する画像ファイルがありません');
                     return;
                 }
-                appState.inputFolder = firstPath;
-                appState.fileEntries = files.map(f => ({ relative_path: f, subfolder: '' }));
-                appState.targetFiles = files;
+                appState.inputFolder = parentDir;
+                appState.fileEntries = allEntries;
+                appState.targetFiles = allEntries.map(e => e.relative_path);
             }
+
+            // サブフォルダが含まれているか自動判定
+            const subfolders = new Set(appState.fileEntries.map(e => e.subfolder).filter(s => s !== ''));
+            appState.subfolderMode = subfolders.size > 0;
 
             updateFileInfo();
             updateExecuteBtn();
+            if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
             setStatus(`${appState.targetFiles.length} ファイルを読み込みました`);
         } catch (e) {
             setStatus('フォルダの読み込みに失敗しました: ' + e);
         }
-    } else {
+    } else if (filePaths.length > 0) {
         // ファイルがドロップされた場合
-        const validPaths = paths.filter(p => {
-            const ext = p.split('.').pop()?.toLowerCase();
-            return supportedExts.includes(ext);
-        });
-
-        if (validPaths.length === 0) {
-            setStatus('対応していないファイル形式です');
-            return;
-        }
-
         // 最初のファイルからフォルダパスを取得
-        const fullPath = validPaths[0];
+        const fullPath = filePaths[0];
         const lastSep = Math.max(fullPath.lastIndexOf('\\'), fullPath.lastIndexOf('/'));
         appState.inputFolder = fullPath.substring(0, lastSep);
 
         // ファイル名のみを配列に格納
-        appState.targetFiles = validPaths.map(p => {
+        appState.targetFiles = filePaths.map(p => {
             const sep = Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'));
             return p.substring(sep + 1);
         });
@@ -186,8 +210,8 @@ export function updateFileInfo() {
         // フォルダ名から出力ファイル名を設定
         updateOutputNameFromFolder();
     } else {
-        // サブフォルダモード時はフォルダ数も表示
-        if (appState.subfolderMode && appState.fileEntries.length > 0) {
+        // 複数フォルダ時はフォルダ数も表示
+        if (appState.fileEntries.length > 0) {
             const subfolders = new Set(appState.fileEntries.map(e => e.subfolder).filter(s => s !== ''));
             if (subfolders.size > 0) {
                 $('fileInfo').textContent = `${appState.targetFiles.length} ファイル（${subfolders.size} フォルダ）`;
@@ -305,25 +329,14 @@ export function setupFileHandlingEvents() {
     // ドロップエリアをクリックでフォルダ選択
     if (dropZone) {
         dropZone.onclick = async (e) => {
-            // サブフォルダトグルのクリックはフォルダ選択ダイアログを開かない
-            if (e.target.closest('.subfolder-toggle')) return;
-            const folder = await appState.openDialog({ directory: true });
-            if (folder) {
-                await handleDroppedPaths([folder]);
+            // PDF分割トグルのクリックはフォルダ選択ダイアログを開かない
+            if (e.target.closest('.split-pdf-toggle')) return;
+            const result = await appState.openDialog({ directory: true, multiple: true });
+            if (result) {
+                const folders = Array.isArray(result) ? result : [result];
+                await handleDroppedPaths(folders);
             }
         };
-    }
-
-    // サブフォルダトグル
-    const subfolderToggle = $('subfolderToggle');
-    if (subfolderToggle) {
-        subfolderToggle.addEventListener('change', async () => {
-            appState.subfolderMode = subfolderToggle.checked;
-            // フォルダが既に読み込まれている場合は再スキャン
-            if (appState.inputFolder) {
-                await handleDroppedPaths([appState.inputFolder]);
-            }
-        });
     }
 
     // 出力フォルダ選択
@@ -343,7 +356,8 @@ export function setupFileHandlingEvents() {
     };
 
     // クリアボタン
-    $('btnClearFiles').onclick = () => {
+    $('btnClearFiles').onclick = (e) => {
+        e.stopPropagation();
         resetFileSelection();
         setStatus('ファイル選択をクリアしました');
     };

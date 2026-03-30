@@ -39,8 +39,8 @@ export function saveSettings() {
             singleNombreStart: parseInt($('singleNombreStart')?.value) || 1,
             singleNombreSize: $('singleNombreSize')?.value || 'small',
 
-            // サブフォルダ
-            subfolderMode: appState.subfolderMode,
+            // PDF分割
+            splitPdfBySubfolder: appState.splitPdfBySubfolder,
 
             // JPEG設定
             jpegAddNombre: $('jpegAddNombre')?.checked ?? false,
@@ -97,11 +97,15 @@ export function loadSettings() {
         // パネル表示を更新
         if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
 
-        // サブフォルダモード
-        if (settings.subfolderMode !== undefined) {
-            appState.subfolderMode = settings.subfolderMode;
-            const toggle = $('subfolderToggle');
-            if (toggle) toggle.checked = settings.subfolderMode;
+        // PDF分割モード
+        if (settings.splitPdfBySubfolder !== undefined) {
+            appState.splitPdfBySubfolder = settings.splitPdfBySubfolder;
+            const btnMerged = $('btnPdfMerged');
+            const btnSplit = $('btnPdfSplit');
+            if (btnMerged && btnSplit) {
+                btnMerged.classList.toggle('active', !settings.splitPdfBySubfolder);
+                btnSplit.classList.toggle('active', settings.splitPdfBySubfolder);
+            }
         }
 
         // タチキリ処理
@@ -237,7 +241,6 @@ export function setupSettingsAutoSave() {
     // 監視対象の要素IDリスト
     const watchIds = [
         // サブフォルダ
-        'subfolderToggle',
         // タチキリ
         'tachikiriSelect', 'fillColor', 'strokeColor',
         // 見開きPDF
@@ -345,10 +348,12 @@ export function doResetSettings() {
     // パネル表示を更新
     if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
 
-    // サブフォルダモードをリセット
-    appState.subfolderMode = false;
-    const subfolderToggle = $('subfolderToggle');
-    if (subfolderToggle) subfolderToggle.checked = false;
+    // PDF分割モードをリセット
+    appState.splitPdfBySubfolder = false;
+    const btnMergedReset = $('btnPdfMerged');
+    const btnSplitReset = $('btnPdfSplit');
+    if (btnMergedReset) btnMergedReset.classList.add('active');
+    if (btnSplitReset) btnSplitReset.classList.remove('active');
 
     // デフォルト値を適用
     const defaults = {

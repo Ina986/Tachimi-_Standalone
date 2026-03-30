@@ -20,6 +20,7 @@ const appState = {
     targetFiles: [],
     outputFolder: null,
     subfolderMode: false,
+    splitPdfBySubfolder: false,
     fileEntries: [],
     jsonData: null,
     selectionRanges: [],

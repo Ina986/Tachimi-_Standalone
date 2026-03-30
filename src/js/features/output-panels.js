@@ -8,6 +8,7 @@ import appState from '../core/app-state.js';
 import { COLOR_MAP } from './constants.js';
 import { showWorkInfoChoiceDialog, showManualWorkInfoModal } from './work-info.js';
 import { jsonSelectModal } from './json-modal.js';
+import { saveSettings } from './settings.js';
 
 /**
  * 出力形式カードの初期化（複数選択対応）
@@ -49,6 +50,24 @@ export function setupPresetCards() {
     // JPEG設定のイベント
     setupJpegEvents();
 
+    // PDF分割トグルボタンのイベント
+    const btnMerged = $('btnPdfMerged');
+    const btnSplit = $('btnPdfSplit');
+    if (btnMerged && btnSplit) {
+        btnMerged.addEventListener('click', () => {
+            appState.splitPdfBySubfolder = false;
+            btnMerged.classList.add('active');
+            btnSplit.classList.remove('active');
+            saveSettings();
+        });
+        btnSplit.addEventListener('click', () => {
+            appState.splitPdfBySubfolder = true;
+            btnSplit.classList.add('active');
+            btnMerged.classList.remove('active');
+            saveSettings();
+        });
+    }
+
     // 初期状態のパネル表示
     updateOutputPanels();
 
@@ -78,6 +97,20 @@ export function updateOutputPanels() {
 
     // JPEGパネル内のノンブル設定表示を更新
     updateJpegNombreSectionVisibility();
+
+    // PDF分割トグルの表示/非表示
+    const splitRow = $('splitPdfRow');
+    if (splitRow) {
+        const hasPdf = appState.selectedOutputs.spreadPdf || appState.selectedOutputs.singlePdf;
+        splitRow.style.display = (appState.subfolderMode && hasPdf) ? 'inline-flex' : 'none';
+        if (!appState.subfolderMode || !hasPdf) {
+            appState.splitPdfBySubfolder = false;
+            const btnMerged = $('btnPdfMerged');
+            const btnSplit = $('btnPdfSplit');
+            if (btnMerged) btnMerged.classList.add('active');
+            if (btnSplit) btnSplit.classList.remove('active');
+        }
+    }
 
     // プレビューを更新
     if (typeof window.updateJpegPreview === 'function') window.updateJpegPreview();

@@ -202,6 +202,21 @@ export function updateProgress(data) {
 }
 
 /**
+ * ファイルエントリをサブフォルダごとにグループ化
+ * @param {Array<{relative_path: string, subfolder: string}>} fileEntries
+ * @returns {Map<string, string[]>} subfolder → relative_path[]
+ */
+function groupFilesBySubfolder(fileEntries) {
+    const groups = new Map();
+    for (const entry of fileEntries) {
+        const key = entry.subfolder || '';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(entry.relative_path);
+    }
+    return groups;
+}
+
+/**
  * 処理を実行
  */
 export async function execute() {
@@ -335,76 +350,124 @@ export async function execute() {
             });
         }
 
-        // 単ページPDF出力
-        if (settings.savePdfSingle) {
-            processingOverlay.setPhase('pdf');
-            if (typeof window.setStatus === 'function') window.setStatus('単ページPDFを生成中...');
+        // PDF生成用のオプションを構築
+        const singleAddNombre = $('singleAddNombre')?.checked ?? false;
+        const singleNombreSize = $('singleNombreSize')?.value || 'medium';
+        const singlePadding = singleAddNombre ? 50 : 0;
 
-            const singleAddNombre = $('singleAddNombre')?.checked ?? false;
-            const singleNombreSize = $('singleNombreSize')?.value || 'medium';
-            const singlePadding = singleAddNombre ? 50 : 0;
+        const singlePdfOptions = {
+            preset: 'b4_single',
+            width_mm: 257.0,
+            height_mm: 364.0,
+            gutter: 0,
+            padding: singlePadding,
+            is_spread: false,
+            add_nombre: singleAddNombre,
+            nombre_size: singleNombreSize
+        };
 
-            const singlePdfOptions = {
-                preset: 'b4_single',
-                width_mm: 257.0,
-                height_mm: 364.0,
-                gutter: 0,
-                padding: singlePadding,
-                is_spread: false,
-                add_nombre: singleAddNombre,
-                nombre_size: singleNombreSize
-            };
+        const spreadAddNombre = $('spreadAddNombre')?.checked ?? false;
+        const spreadNombreSize = $('spreadNombreSize')?.value || 'medium';
 
-            const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_単ページ.pdf';
+        const spreadPdfOptions = {
+            preset: 'b4_spread',
+            width_mm: 257.0,
+            height_mm: 364.0,
+            gutter: settings.spreadGutter ?? 70,
+            padding: settings.spreadPadding ?? 150,
+            is_spread: true,
+            add_white_page: settings.addWhitePage || false,
+            print_work_info: settings.printWorkInfo || false,
+            work_info: settings.workInfo || null,
+            add_nombre: spreadAddNombre,
+            nombre_size: spreadNombreSize
+        };
 
-            await appState.invoke('generate_pdf', {
-                inputFolder: pdfSourceFolder,
-                outputPath: singlePdfPath,
-                files: pdfFiles,
-                options: singlePdfOptions
-            });
+        // サブフォルダごとにPDFを分割するモード
+        if (appState.splitPdfBySubfolder && appState.subfolderMode && appState.fileEntries.length > 0) {
+            // ファイルをサブフォルダごとにグループ化
+            const groups = groupFilesBySubfolder(appState.fileEntries);
+            let groupIndex = 0;
+            const totalGroups = groups.size;
 
-            message += `単ページPDF生成完了\n`;
-        }
+            for (const [subfolder, groupFiles] of groups) {
+                groupIndex++;
+                const groupPdfFiles = processedImages
+                    ? groupFiles.map(f => f.replace(/\.[^/.]+$/, '') + '.jpg')
+                    : groupFiles;
+                const pdfName = subfolder || (settings.outputName || '出力');
 
-        // 見開きPDF出力
-        if (settings.savePdfSpread) {
-            processingOverlay.setPhase('pdf');
-            if (typeof window.setStatus === 'function') window.setStatus('見開きPDFを生成中...');
+                // 単ページPDF出力
+                if (settings.savePdfSingle) {
+                    processingOverlay.setPhase('pdf');
+                    if (typeof window.setStatus === 'function') {
+                        window.setStatus(`単ページPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
+                    }
 
-            const spreadAddNombre = $('spreadAddNombre')?.checked ?? false;
-            const spreadNombreSize = $('spreadNombreSize')?.value || 'medium';
-            console.log('見開きPDF設定:', {
-                spreadAddNombre,
-                spreadNombreSize,
-                padding: settings.spreadPadding,
-                paddingEnabled: $('spreadPaddingEnabled')?.checked
-            });
+                    const singlePdfPath = appState.outputFolder + '\\' + pdfName + '_単ページ.pdf';
+                    await appState.invoke('generate_pdf', {
+                        inputFolder: pdfSourceFolder,
+                        outputPath: singlePdfPath,
+                        files: groupPdfFiles,
+                        options: singlePdfOptions
+                    });
+                }
 
-            const spreadPdfOptions = {
-                preset: 'b4_spread',
-                width_mm: 257.0,
-                height_mm: 364.0,
-                gutter: settings.spreadGutter ?? 70,
-                padding: settings.spreadPadding ?? 150,
-                is_spread: true,
-                add_white_page: settings.addWhitePage || false,
-                print_work_info: settings.printWorkInfo || false,
-                work_info: settings.workInfo || null,
-                add_nombre: spreadAddNombre,
-                nombre_size: spreadNombreSize
-            };
+                // 見開きPDF出力
+                if (settings.savePdfSpread) {
+                    processingOverlay.setPhase('pdf');
+                    if (typeof window.setStatus === 'function') {
+                        window.setStatus(`見開きPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
+                    }
 
-            const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_見開き.pdf';
+                    const spreadPdfPath = appState.outputFolder + '\\' + pdfName + '_見開き.pdf';
+                    await appState.invoke('generate_pdf', {
+                        inputFolder: pdfSourceFolder,
+                        outputPath: spreadPdfPath,
+                        files: groupPdfFiles,
+                        options: spreadPdfOptions
+                    });
+                }
+            }
 
-            await appState.invoke('generate_pdf', {
-                inputFolder: pdfSourceFolder,
-                outputPath: spreadPdfPath,
-                files: pdfFiles,
-                options: spreadPdfOptions
-            });
+            message += `PDF生成完了（${totalGroups}フォルダ分）\n`;
 
-            message += `見開きPDF生成完了\n`;
+        } else {
+            // 通常モード: 全ファイルを1つのPDFにまとめる
+
+            // 単ページPDF出力
+            if (settings.savePdfSingle) {
+                processingOverlay.setPhase('pdf');
+                if (typeof window.setStatus === 'function') window.setStatus('単ページPDFを生成中...');
+
+                const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_単ページ.pdf';
+
+                await appState.invoke('generate_pdf', {
+                    inputFolder: pdfSourceFolder,
+                    outputPath: singlePdfPath,
+                    files: pdfFiles,
+                    options: singlePdfOptions
+                });
+
+                message += `単ページPDF生成完了\n`;
+            }
+
+            // 見開きPDF出力
+            if (settings.savePdfSpread) {
+                processingOverlay.setPhase('pdf');
+                if (typeof window.setStatus === 'function') window.setStatus('見開きPDFを生成中...');
+
+                const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_見開き.pdf';
+
+                await appState.invoke('generate_pdf', {
+                    inputFolder: pdfSourceFolder,
+                    outputPath: spreadPdfPath,
+                    files: pdfFiles,
+                    options: spreadPdfOptions
+                });
+
+                message += `見開きPDF生成完了\n`;
+            }
         }
 
         // 一時フォルダを使用した場合は削除
