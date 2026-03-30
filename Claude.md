@@ -42,7 +42,7 @@ tachimi_standalone/
 │           ├── undo-redo.js          # Undo/Redo（コールバック登録パターン）
 │           ├── feature-unlock.js     # 機能アンロック（パスワード保護）
 │           ├── update-system.js      # 自動更新
-│           ├── file-handling.js      # ファイルD&D・選択・出力先管理
+│           ├── file-handling.js      # ファイルD&D・複数フォルダ対応・出力先管理
 │           ├── json-parsing.js       # JSON解析・適用
 │           ├── json-modal.js         # JSONセレクションモーダル
 │           ├── json-register.js      # JSON登録・保存
@@ -117,8 +117,8 @@ tachimi_standalone/
 
 ### 主要な関数（モジュール別）
 
-- `execution.js`: `execute()`, `collectSettings()`, `updateProgress()`
-- `file-handling.js`: `handleDroppedPaths()`, `updateFileInfo()`, `updateOutputInfo()`
+- `execution.js`: `execute()`, `collectSettings()`, `updateProgress()`, `groupFilesBySubfolder()`
+- `file-handling.js`: `handleDroppedPaths()`, `updateFileInfo()`, `updateOutputInfo()`, `resetFileSelection()`
 - `output-panels.js`: `setupPresetCards()`, `updateOutputPanels()`, `syncNombreSettings()`
 - `preview.js`: `updateSpreadPreview()`, `loadPreviewImageByIndex()`
 - `crop-mode.js`: `openCropMode()`, `closeCropMode()`, `updateSelectionVisual()`
@@ -353,7 +353,9 @@ npm run tauri build --debug  # デバッグビルド
 
 ## 注意事項
 
-- `targetFiles` はファイル名のみ格納（フルパスではない）
+- `targetFiles` は相対パスを格納（複数フォルダ時は `フォルダ名/ファイル名` 形式）
+- `fileEntries` は `{relative_path, subfolder}` の配列。`subfolderMode` はフォルダ読み込み時に自動判定
+- `splitPdfBySubfolder` が `true` の場合、PDF生成時にサブフォルダごとに分割出力
 - PDFソースは `process_images` が返す `output_folder`（実際のJPEG出力パス）を参照
 - ノンブル設定は各パネル間で自動同期される
 - `JSON_FOLDER_PATH` は `G:/共有ドライブ/...` にハードコードされている
@@ -438,6 +440,8 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] バッチ処理のキャンセル機能（AtomicBoolフラグ + 控えめな×ボタン）
 - [x] renderer.js → ES Modules完全移行（6,138行 → 16モジュールに分割）
 - [x] JPEG出力の連番フォルダ対応（jpg → jpg(1) → jpg(2)...）
+- [x] 複数フォルダ対応（D&D・ダイアログ複数選択・サブフォルダ自動検出）
+- [x] PDF分割出力トグル（単一PDF / 分割PDF切り替えボタン）
 
 ## 今後の改善候補
 
