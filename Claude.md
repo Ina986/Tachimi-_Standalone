@@ -444,7 +444,10 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] PDF分割出力トグル（単一PDF / 分割PDF切り替えボタン）
 - [x] デスクトップアイコンへのフォルダD&Dで起動（複数フォルダ対応、位置引数からパス検出）
 - [x] PDF出力の画質改善（PDF用中間JPEGをquality100に変更）
-- [x] PDFファイル名サフィックス選択（「_見開き/_単ページ」付与をチェックボックスで制御）
+- [x] PDF出力のタイル状アーティファクトを修正（interpolateをtrueに維持）
+- [x] PDFページサイズの自動DPI計算（画像寸法と目標B5サイズから実DPIを算出、100%表示で画面に収まるように）
+- [x] 1200dpi原稿のJPEG品質自動切替（長辺7000px超でquality100を適用）
+- [x] 開発ビルド高速化（profile.dev opt-level 2→1に変更）
 
 ## 今後の改善候補
 

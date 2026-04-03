@@ -127,8 +127,15 @@ pub fn generate_pdf(
         return Err("処理するファイルがありません".to_string());
     }
 
-    let dpi = DEFAULT_DPI;
-    let px_to_mm_ratio = 25.4 / dpi;
+    // 最初の画像から実DPIを自動計算（目標ページサイズに収まるように）
+    let first_file = std::path::Path::new(input_folder).join(&files[0]);
+    let (first_w, first_h) = pdf::common::get_image_dimensions(&first_file)?;
+    let dpi_x = first_w as f32 / (options.width_mm / 25.4);
+    let dpi_y = first_h as f32 / (options.height_mm / 25.4);
+    let image_dpi = dpi_x.max(dpi_y);
+
+    // 余白・ノドはDEFAULT_DPI基準で変換（UIスライダー値の物理サイズを維持）
+    let px_to_mm_ratio = 25.4 / DEFAULT_DPI;
     let padding_mm = options.padding as f32 * px_to_mm_ratio;
     let gutter_mm = options.gutter as f32 * px_to_mm_ratio;
 
@@ -145,6 +152,7 @@ pub fn generate_pdf(
             options.work_info.as_ref(),
             options.add_nombre,
             &options.nombre_size,
+            image_dpi,
         )
     } else {
         generate_single_pdf(
@@ -155,6 +163,7 @@ pub fn generate_pdf(
             padding_mm,
             options.add_nombre,
             &options.nombre_size,
+            image_dpi,
         )
     }
 }

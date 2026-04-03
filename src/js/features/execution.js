@@ -150,8 +150,7 @@ export function collectSettings() {
         addWhitePage: outputSettings.addWhitePage,
         printWorkInfo: outputSettings.printWorkInfo,
         workInfo,
-        outputName: $('outputName').value || '出力',
-        outputNameSuffix: $('outputNameSuffix')?.checked ?? false
+        outputName: $('outputName').value || '出力'
     };
 }
 
@@ -271,6 +270,11 @@ export async function execute() {
             tempFolderUsed = true;
         }
 
+        // 高解像度判定（長辺7000px超 ≒ 1200dpi）→ JPEG品質100で圧縮劣化を防止
+        const imgW = appState.previewImageSize?.width || 0;
+        const imgH = appState.previewImageSize?.height || 0;
+        const isHighRes = Math.max(imgW, imgH) > 7000;
+
         // 画像処理が必要な場合
         if (settings.saveJpeg || needsTempProcessing) {
             processingOverlay.setPhase('process');
@@ -292,7 +296,7 @@ export async function execute() {
                 nombre_size: settings.nombreSize || 'medium',
                 resize_mode: settings.resizeMode || 'none',
                 resize_percent: settings.resizePercent || 50,
-                jpeg_quality: tempFolderUsed ? 100.0 : 95.0
+                jpeg_quality: (tempFolderUsed || isHighRes) ? 100.0 : 95.0
             };
 
             const result = await appState.invoke('process_images', {
@@ -358,9 +362,9 @@ export async function execute() {
         const singlePadding = singleAddNombre ? 50 : 0;
 
         const singlePdfOptions = {
-            preset: 'b4_single',
-            width_mm: 257.0,
-            height_mm: 364.0,
+            preset: 'b5_single',
+            width_mm: 182.0,
+            height_mm: 257.0,
             gutter: 0,
             padding: singlePadding,
             is_spread: false,
@@ -372,9 +376,9 @@ export async function execute() {
         const spreadNombreSize = $('spreadNombreSize')?.value || 'medium';
 
         const spreadPdfOptions = {
-            preset: 'b4_spread',
-            width_mm: 257.0,
-            height_mm: 364.0,
+            preset: 'b5_spread',
+            width_mm: 182.0,
+            height_mm: 257.0,
             gutter: settings.spreadGutter ?? 70,
             padding: settings.spreadPadding ?? 150,
             is_spread: true,
@@ -406,8 +410,7 @@ export async function execute() {
                         window.setStatus(`単ページPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
                     }
 
-                    const singleSuffix = settings.outputNameSuffix ? '_単ページ' : '';
-                    const singlePdfPath = appState.outputFolder + '\\' + pdfName + singleSuffix + '.pdf';
+                    const singlePdfPath = appState.outputFolder + '\\' + pdfName + '.pdf';
                     await appState.invoke('generate_pdf', {
                         inputFolder: pdfSourceFolder,
                         outputPath: singlePdfPath,
@@ -423,8 +426,7 @@ export async function execute() {
                         window.setStatus(`見開きPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
                     }
 
-                    const spreadSuffix = settings.outputNameSuffix ? '_見開き' : '';
-                    const spreadPdfPath = appState.outputFolder + '\\' + pdfName + spreadSuffix + '.pdf';
+                    const spreadPdfPath = appState.outputFolder + '\\' + pdfName + '.pdf';
                     await appState.invoke('generate_pdf', {
                         inputFolder: pdfSourceFolder,
                         outputPath: spreadPdfPath,
@@ -444,8 +446,7 @@ export async function execute() {
                 processingOverlay.setPhase('pdf');
                 if (typeof window.setStatus === 'function') window.setStatus('単ページPDFを生成中...');
 
-                const singleSuffix = settings.outputNameSuffix ? '_単ページ' : '';
-                const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + singleSuffix + '.pdf';
+                const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '.pdf';
 
                 await appState.invoke('generate_pdf', {
                     inputFolder: pdfSourceFolder,
@@ -462,8 +463,7 @@ export async function execute() {
                 processingOverlay.setPhase('pdf');
                 if (typeof window.setStatus === 'function') window.setStatus('見開きPDFを生成中...');
 
-                const spreadSuffix = settings.outputNameSuffix ? '_見開き' : '';
-                const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + spreadSuffix + '.pdf';
+                const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '.pdf';
 
                 await appState.invoke('generate_pdf', {
                     inputFolder: pdfSourceFolder,

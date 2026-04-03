@@ -1,6 +1,6 @@
 [package]
 name = "tachimi"
-version = "1.2.17"
+version = "1.2.18"
 description = "漫画原稿一括処理アプリ - タチミ"
 authors = ["Tachimi"]
 license = "MIT"
@@ -51,9 +51,9 @@ tokio = { version = "1", features = ["rt", "sync"] }
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
-# 開発ビルドでも画像処理を高速化
+# 開発ビルドはコンパイル速度優先、重い依存のみ最適化
 [profile.dev]
-opt-level = 2
+opt-level = 1
 
 # 画像処理系
 [profile.dev.package.image]

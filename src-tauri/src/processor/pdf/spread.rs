@@ -10,7 +10,7 @@ use tauri::Emitter;
 
 use super::common::{
     create_pdf_image, create_pdf_image_from_jpeg_file, create_white_page_image,
-    get_image_dimensions, get_nombre_font_size_pt, px_to_mm, unique_output_path, DEFAULT_DPI,
+    get_image_dimensions, get_nombre_font_size_pt, px_to_mm, unique_output_path,
 };
 use crate::processor::jpeg::is_jpeg_file;
 use crate::processor::image_loader::load_image;
@@ -29,10 +29,10 @@ pub fn generate_spread_pdf(
     work_info: Option<&WorkInfo>,
     add_nombre: bool,
     nombre_size: &str,
+    dpi: f32,
 ) -> Result<String, String> {
     let input_path = Path::new(input_folder);
     let total = files.len();
-    let dpi = DEFAULT_DPI;
 
     if total == 0 {
         return Err("処理するファイルがありません".to_string());

@@ -583,16 +583,6 @@ body {
     flex-shrink: 0;
 }
 
-.output-name-suffix-row {
-    margin-top: 4px;
-    padding-left: 55px;
-}
-
-.output-name-suffix-row .checkbox-sm span {
-    font-size: 10px;
-    color: var(--text3);
-}
-
 /* セクション - コントロールパネル風 */
 .section {
     background:
