@@ -39,6 +39,9 @@ export function saveSettings() {
             singleNombreStart: parseInt($('singleNombreStart')?.value) || 1,
             singleNombreSize: $('singleNombreSize')?.value || 'small',
 
+            // ファイル名サフィックス
+            outputNameSuffix: $('outputNameSuffix')?.checked ?? false,
+
             // PDF分割
             splitPdfBySubfolder: appState.splitPdfBySubfolder,
 
@@ -96,6 +99,12 @@ export function loadSettings() {
         });
         // パネル表示を更新
         if (typeof window.updateOutputPanels === 'function') window.updateOutputPanels();
+
+        // ファイル名サフィックス
+        if (settings.outputNameSuffix !== undefined) {
+            const el = $('outputNameSuffix');
+            if (el) el.checked = settings.outputNameSuffix;
+        }
 
         // PDF分割モード
         if (settings.splitPdfBySubfolder !== undefined) {

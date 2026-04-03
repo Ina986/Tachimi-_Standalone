@@ -150,7 +150,8 @@ export function collectSettings() {
         addWhitePage: outputSettings.addWhitePage,
         printWorkInfo: outputSettings.printWorkInfo,
         workInfo,
-        outputName: $('outputName').value || '出力'
+        outputName: $('outputName').value || '出力',
+        outputNameSuffix: $('outputNameSuffix')?.checked ?? false
     };
 }
 
@@ -405,7 +406,8 @@ export async function execute() {
                         window.setStatus(`単ページPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
                     }
 
-                    const singlePdfPath = appState.outputFolder + '\\' + pdfName + '_単ページ.pdf';
+                    const singleSuffix = settings.outputNameSuffix ? '_単ページ' : '';
+                    const singlePdfPath = appState.outputFolder + '\\' + pdfName + singleSuffix + '.pdf';
                     await appState.invoke('generate_pdf', {
                         inputFolder: pdfSourceFolder,
                         outputPath: singlePdfPath,
@@ -421,7 +423,8 @@ export async function execute() {
                         window.setStatus(`見開きPDF生成中 (${groupIndex}/${totalGroups}): ${subfolder || 'ルート'}`);
                     }
 
-                    const spreadPdfPath = appState.outputFolder + '\\' + pdfName + '_見開き.pdf';
+                    const spreadSuffix = settings.outputNameSuffix ? '_見開き' : '';
+                    const spreadPdfPath = appState.outputFolder + '\\' + pdfName + spreadSuffix + '.pdf';
                     await appState.invoke('generate_pdf', {
                         inputFolder: pdfSourceFolder,
                         outputPath: spreadPdfPath,
@@ -441,7 +444,8 @@ export async function execute() {
                 processingOverlay.setPhase('pdf');
                 if (typeof window.setStatus === 'function') window.setStatus('単ページPDFを生成中...');
 
-                const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_単ページ.pdf';
+                const singleSuffix = settings.outputNameSuffix ? '_単ページ' : '';
+                const singlePdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + singleSuffix + '.pdf';
 
                 await appState.invoke('generate_pdf', {
                     inputFolder: pdfSourceFolder,
@@ -458,7 +462,8 @@ export async function execute() {
                 processingOverlay.setPhase('pdf');
                 if (typeof window.setStatus === 'function') window.setStatus('見開きPDFを生成中...');
 
-                const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + '_見開き.pdf';
+                const spreadSuffix = settings.outputNameSuffix ? '_見開き' : '';
+                const spreadPdfPath = appState.outputFolder + '\\' + (settings.outputName || '出力') + spreadSuffix + '.pdf';
 
                 await appState.invoke('generate_pdf', {
                     inputFolder: pdfSourceFolder,
