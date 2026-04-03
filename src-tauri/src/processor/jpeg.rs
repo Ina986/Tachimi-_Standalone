@@ -6,9 +6,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-/// デフォルトJPEG品質
-pub const JPEG_QUALITY: f32 = 95.0;
-
 /// MozJPEGでRGB画像をエンコード（高効率圧縮）
 pub fn encode_jpeg_mozjpeg(rgb_data: &[u8], width: u32, height: u32, quality: f32) -> Option<Vec<u8>> {
     std::panic::catch_unwind(|| {

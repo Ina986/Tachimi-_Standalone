@@ -52,7 +52,12 @@ pub struct ProcessOptions {
     pub resize_mode: String, // "none", "percent", "fixed"
     #[serde(default = "default_resize_percent")]
     pub resize_percent: u32,
+    /// JPEG品質（0-100）。PDF用は100、通常JPEG出力は95
+    #[serde(default = "default_jpeg_quality")]
+    pub jpeg_quality: f32,
 }
+
+pub fn default_jpeg_quality() -> f32 { 95.0 }
 
 pub fn default_nombre_start() -> u32 { 1 }
 pub fn default_nombre_size() -> String { "medium".to_string() }

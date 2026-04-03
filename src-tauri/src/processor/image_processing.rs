@@ -14,7 +14,7 @@ use super::types::{
 };
 use super::cache::get_cached_font_data;
 use super::image_loader::load_image;
-use super::jpeg::{write_jpeg_mozjpeg_to_file, JPEG_QUALITY};
+use super::jpeg::write_jpeg_mozjpeg_to_file;
 
 /// 単一画像を処理
 pub fn process_single_image(
@@ -48,7 +48,7 @@ pub fn process_single_image(
 
         // MozJPEGで保存
         let rgb_image = final_image.to_rgb8();
-        write_jpeg_mozjpeg_to_file(rgb_image.as_raw(), rgb_image.width(), rgb_image.height(), JPEG_QUALITY, output_path)?;
+        write_jpeg_mozjpeg_to_file(rgb_image.as_raw(), rgb_image.width(), rgb_image.height(), options.jpeg_quality, output_path)?;
         return Ok(());
     }
 
@@ -124,7 +124,7 @@ pub fn process_single_image(
 
     // MozJPEGで保存
     let rgb_image = final_image.to_rgb8();
-    write_jpeg_mozjpeg_to_file(rgb_image.as_raw(), rgb_image.width(), rgb_image.height(), JPEG_QUALITY, output_path)?;
+    write_jpeg_mozjpeg_to_file(rgb_image.as_raw(), rgb_image.width(), rgb_image.height(), options.jpeg_quality, output_path)?;
 
     Ok(())
 }

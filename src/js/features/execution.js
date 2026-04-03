@@ -290,7 +290,8 @@ export async function execute() {
                 nombre_start_number: settings.nombreStartNumber || 1,
                 nombre_size: settings.nombreSize || 'medium',
                 resize_mode: settings.resizeMode || 'none',
-                resize_percent: settings.resizePercent || 50
+                resize_percent: settings.resizePercent || 50,
+                jpeg_quality: tempFolderUsed ? 100.0 : 95.0
             };
 
             const result = await appState.invoke('process_images', {
