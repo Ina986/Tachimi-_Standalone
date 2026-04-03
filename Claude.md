@@ -443,7 +443,7 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] 複数フォルダ対応（D&D・ダイアログ複数選択・サブフォルダ自動検出）
 - [x] PDF分割出力トグル（単一PDF / 分割PDF切り替えボタン）
 - [x] デスクトップアイコンへのフォルダD&Dで起動（複数フォルダ対応、位置引数からパス検出）
-- [x] PDF出力の画質改善（PDF用中間JPEGをquality100に、interpolateをfalseに変更）
+- [x] PDF出力の画質改善（PDF用中間JPEGをquality100に変更）
 
 ## 今後の改善候補
 
