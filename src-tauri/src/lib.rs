@@ -730,17 +730,34 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|_app| {
-            // CLI引数 --files <json_path> でファイルパスをstateに保存（フォールバック）
             let args: Vec<String> = std::env::args().collect();
+
+            // 1. --files <json_path> フラグからの読み込み（COMIC-Bridge等からの連携用）
             if let Some(pos) = args.iter().position(|a| a == "--files") {
                 if let Some(json_path) = args.get(pos + 1) {
                     if let Ok(content) = std::fs::read_to_string(json_path) {
                         if let Ok(paths) = serde_json::from_str::<Vec<String>>(&content) {
                             *CLI_FILES.lock().unwrap() = Some(paths);
+                            return Ok(());
                         }
                     }
                 }
             }
+
+            // 2. 位置引数からフォルダ/ファイルパスを検出
+            //    デスクトップアイコンへのD&D時、Windowsがパスを引数として渡す
+            //    args[0]は実行ファイル自身なのでスキップ、"-"始まりのフラグも除外
+            let paths: Vec<String> = args.iter()
+                .skip(1)
+                .filter(|a| !a.starts_with('-'))
+                .filter(|a| std::path::Path::new(a).exists())
+                .cloned()
+                .collect();
+
+            if !paths.is_empty() {
+                *CLI_FILES.lock().unwrap() = Some(paths);
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
