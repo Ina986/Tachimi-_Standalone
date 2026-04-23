@@ -5,9 +5,10 @@
 
 import { $ } from '../utils/dom.js';
 import appState from '../core/app-state.js';
+import { OUTPUT_FOLDER_STORAGE_KEY } from './constants.js';
 
 /**
- * デフォルト出力フォルダを初期化
+ * 出力フォルダを初期化（保存された設定があればそれを優先、なければデフォルト）
  */
 export async function initDefaultOutputFolder() {
     if (!appState.invoke) {
@@ -15,6 +16,21 @@ export async function initDefaultOutputFolder() {
         setTimeout(initDefaultOutputFolder, 100);
         return;
     }
+
+    // 1. localStorageに保存された出力先があれば優先
+    try {
+        const saved = localStorage.getItem(OUTPUT_FOLDER_STORAGE_KEY);
+        if (saved && !appState.outputFolder) {
+            appState.outputFolder = saved;
+            updateOutputInfo();
+            console.log('保存された出力フォルダを復元:', saved);
+            return;
+        }
+    } catch (e) {
+        console.warn('保存された出力フォルダの読み込みに失敗:', e);
+    }
+
+    // 2. なければデフォルト出力フォルダ
     try {
         const defaultFolder = await appState.invoke('get_default_output_folder');
         if (defaultFolder && !appState.outputFolder) {
@@ -345,12 +361,25 @@ export function setupFileHandlingEvents() {
         if (folder) {
             appState.outputFolder = folder;
             updateOutputInfo();
+            // 次回起動時に復元できるよう保存
+            try {
+                localStorage.setItem(OUTPUT_FOLDER_STORAGE_KEY, folder);
+            } catch (e) {
+                console.warn('出力フォルダの保存に失敗:', e);
+            }
             setStatus('出力先を設定しました');
         }
     };
 
     // 出力フォルダをデフォルトに戻す
     $('btnResetOutput').onclick = async () => {
+        // 保存済みの出力先をクリア → デフォルトに戻す
+        try {
+            localStorage.removeItem(OUTPUT_FOLDER_STORAGE_KEY);
+        } catch (e) {
+            console.warn('出力フォルダ設定のクリアに失敗:', e);
+        }
+        appState.outputFolder = null;
         await initDefaultOutputFolder();
         setStatus('出力先をデフォルトに戻しました');
     };

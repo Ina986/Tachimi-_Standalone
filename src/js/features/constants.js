@@ -34,3 +34,6 @@ export const COLOR_MAP = {
 
 // 設定の永続化キー
 export const SETTINGS_STORAGE_KEY = 'tachimi_ui_settings';
+
+// 出力先フォルダの永続化キー
+export const OUTPUT_FOLDER_STORAGE_KEY = 'tachimi_output_folder';

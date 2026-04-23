@@ -42,7 +42,7 @@ tachimi_standalone/
 │           ├── undo-redo.js          # Undo/Redo（コールバック登録パターン）
 │           ├── feature-unlock.js     # 機能アンロック（パスワード保護）
 │           ├── update-system.js      # 自動更新
-│           ├── file-handling.js      # ファイルD&D・複数フォルダ対応・出力先管理
+│           ├── file-handling.js      # ファイルD&D・複数フォルダ対応・出力先管理（localStorage永続化）
 │           ├── json-parsing.js       # JSON解析・適用
 │           ├── json-modal.js         # JSONセレクションモーダル
 │           ├── json-register.js      # JSON登録・保存
@@ -448,6 +448,7 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] PDFページサイズの自動DPI計算（画像寸法と目標B5サイズから実DPIを算出、100%表示で画面に収まるように）
 - [x] 1200dpi原稿のJPEG品質自動切替（長辺7000px超でquality100を適用）
 - [x] 開発ビルド高速化（profile.dev opt-level 2→1に変更）
+- [x] 出力先フォルダの永続化（次回起動時に前回選択した出力先を自動復元、`OUTPUT_FOLDER_STORAGE_KEY`をlocalStorageに保存／リセットボタンで削除）
 
 ## 今後の改善候補
 
