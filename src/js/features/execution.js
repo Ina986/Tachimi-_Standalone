@@ -244,12 +244,14 @@ export async function execute() {
     // リッチ進捗オーバーレイを表示
     processingOverlay.show(appState.targetFiles.length);
 
+    // finallyからアクセスするためtryの外で宣言
+    let tempFolderUsed = false;
+    let actualOutputFolder = appState.outputFolder;
+
     try {
         const settings = collectSettings();
         let message = '';
         let processedImages = false;
-        let tempFolderUsed = false;
-        let actualOutputFolder = appState.outputFolder;
         let jpegOutputFolder = null;  // Rust側が返す実際のJPEG出力パス
 
         // PDF出力が有効かチェック
@@ -317,9 +319,7 @@ export async function execute() {
             const wasCancelled = processingOverlay.cancelled ||
                 (result.errors.length > 0 && result.errors[0].startsWith('処理がキャンセルされました'));
             if (wasCancelled) {
-                if (tempFolderUsed) {
-                    try { await appState.invoke('delete_folder', { path: actualOutputFolder }); } catch(e) {}
-                }
+                // 一時フォルダはfinallyで削除される
                 const cancelMsg = result.errors[0] || '処理がキャンセルされました';
                 $('modalMessage').textContent = cancelMsg;
                 $('modal').style.display = 'flex';
@@ -476,15 +476,7 @@ export async function execute() {
             }
         }
 
-        // 一時フォルダを使用した場合は削除
-        if (tempFolderUsed) {
-            if (typeof window.setStatus === 'function') window.setStatus('一時ファイルを削除中...');
-            try {
-                await appState.invoke('delete_folder', { path: actualOutputFolder });
-            } catch (cleanupError) {
-                console.warn('一時フォルダの削除に失敗:', cleanupError);
-            }
-        }
+        // 一時フォルダはfinallyで削除される
 
         // 処理時間を計算
         const elapsedMs = Date.now() - processingOverlay.startTime;
@@ -505,6 +497,14 @@ export async function execute() {
         $('modalMessage').textContent = `エラーが発生しました:\n${e}`;
         $('modal').style.display = 'flex';
     } finally {
+        // 一時フォルダを使用した場合は必ず削除（正常終了・キャンセル・例外いずれも）
+        if (tempFolderUsed) {
+            try {
+                await appState.invoke('delete_folder', { path: actualOutputFolder });
+            } catch (cleanupError) {
+                console.warn('一時フォルダの削除に失敗:', cleanupError);
+            }
+        }
         appState.isProcessing = false;
         $('progressArea').style.display = 'none';
         processingOverlay.hide();
