@@ -261,8 +261,8 @@ export async function execute() {
         // ノンブル機能が有効かどうか判定
         const needsNombre = settings.addNombre === true;
 
-        // PDF出力のために画像処理が必要だが、JPEG保存が無効な場合
-        const needsTempProcessing = savePdf && (needsTachikiri || needsNombre) && !settings.saveJpeg;
+        // PDF出力時は常に一時JPEGを経由する（PSD直読み＋quality100再エンコードを避けるため）
+        const needsTempProcessing = savePdf && !settings.saveJpeg;
 
         if (needsTempProcessing) {
             if (typeof window.setStatus === 'function') window.setStatus('PDF用の一時フォルダを準備中...');
