@@ -1,17 +1,17 @@
 //! タチミ - 画像処理モジュール
 //! 画像処理とPDF生成の中心モジュール
 
-pub mod types;
 pub mod cache;
-pub mod jpeg;
 pub mod image_loader;
 pub mod image_processing;
+pub mod jpeg;
 pub mod pdf;
+pub mod types;
 
 // 型のre-export
 pub use types::{
-    ImageInfo, PreviewFileInfo, ProcessOptions, ProcessResult,
-    PdfOptions, WorkInfo, WorkInfoPreview, FileEntry,
+    FileEntry, ImageInfo, PdfOptions, PreviewFileInfo, ProcessOptions, ProcessResult, WorkInfo,
+    WorkInfoPreview,
 };
 
 // キャッシュ関連のre-export
@@ -20,8 +20,8 @@ pub use cache::{clear_psd_cache, get_or_cache_psd};
 // 画像処理のre-export
 pub use image_processing::process_single_image;
 
-use ::image::GenericImageView;
 use ::image::imageops::FilterType;
+use ::image::GenericImageView;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::path::Path;
 
@@ -71,7 +71,11 @@ pub fn get_image_preview(file_path: &str, max_size: u32) -> Result<ImageInfo, St
 }
 
 /// 画像のプレビューをファイルに保存（高速化版）
-pub fn get_image_preview_file(file_path: &str, max_size: u32, temp_dir: &str) -> Result<PreviewFileInfo, String> {
+pub fn get_image_preview_file(
+    file_path: &str,
+    max_size: u32,
+    temp_dir: &str,
+) -> Result<PreviewFileInfo, String> {
     let path = Path::new(file_path);
     let ext = path
         .extension()
@@ -99,14 +103,21 @@ pub fn get_image_preview_file(file_path: &str, max_size: u32, temp_dir: &str) ->
     };
 
     // 一時ファイルのパスを生成
-    let file_name = path.file_stem()
+    let file_name = path
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("preview");
     let temp_file_path = Path::new(temp_dir).join(format!("{}_preview.jpg", file_name));
 
     // MozJPEGでファイルに保存
     let rgb_img = resized.to_rgb8();
-    write_jpeg_mozjpeg_to_file(rgb_img.as_raw(), rgb_img.width(), rgb_img.height(), 80.0, &temp_file_path)?;
+    write_jpeg_mozjpeg_to_file(
+        rgb_img.as_raw(),
+        rgb_img.width(),
+        rgb_img.height(),
+        80.0,
+        &temp_file_path,
+    )?;
 
     Ok(PreviewFileInfo {
         width: orig_width,
@@ -116,8 +127,8 @@ pub fn get_image_preview_file(file_path: &str, max_size: u32, temp_dir: &str) ->
 }
 
 /// PDF生成（見開き/単ページの分岐）
-pub fn generate_pdf(
-    app_handle: &tauri::AppHandle,
+fn generate_pdf_inner(
+    app_handle: Option<&tauri::AppHandle>,
     input_folder: &str,
     output_path: &str,
     files: &[String],
@@ -166,4 +177,23 @@ pub fn generate_pdf(
             image_dpi,
         )
     }
+}
+
+pub fn generate_pdf(
+    app_handle: &tauri::AppHandle,
+    input_folder: &str,
+    output_path: &str,
+    files: &[String],
+    options: &PdfOptions,
+) -> Result<String, String> {
+    generate_pdf_inner(Some(app_handle), input_folder, output_path, files, options)
+}
+
+pub fn generate_pdf_headless(
+    input_folder: &str,
+    output_path: &str,
+    files: &[String],
+    options: &PdfOptions,
+) -> Result<String, String> {
+    generate_pdf_inner(None, input_folder, output_path, files, options)
 }

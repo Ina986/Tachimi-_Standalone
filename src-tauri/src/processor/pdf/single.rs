@@ -12,12 +12,12 @@ use super::common::{
     create_pdf_image, create_pdf_image_from_jpeg_file, get_image_dimensions,
     get_nombre_font_size_pt, px_to_mm, unique_output_path,
 };
-use crate::processor::jpeg::is_jpeg_file;
 use crate::processor::image_loader::load_image;
+use crate::processor::jpeg::is_jpeg_file;
 
 /// 単ページPDF生成（画像サイズ = ページサイズ）
 pub fn generate_single_pdf(
-    app_handle: &tauri::AppHandle,
+    app_handle: Option<&tauri::AppHandle>,
     input_folder: &str,
     output_path: &str,
     files: &[String],
@@ -46,7 +46,7 @@ pub fn generate_single_pdf(
         "タチミ出力",
         Mm(first_page_width_with_padding),
         Mm(first_page_height_with_padding),
-        "Layer 1"
+        "Layer 1",
     );
     let mut current_layer = doc.get_page(page1).get_layer(layer1);
 
@@ -65,13 +65,18 @@ pub fn generate_single_pdf(
         }
 
         // 進捗イベント発行
-        let _ = app_handle.emit("progress", crate::ProgressPayload {
-            current: i + 1,
-            total,
-            filename: filename.clone(),
-            phase: format!("PDF生成: 画像読み込み中 ({}/{})", i + 1, total),
-            in_progress: 0,
-        });
+        if let Some(app_handle) = app_handle {
+            let _ = app_handle.emit(
+                "progress",
+                crate::ProgressPayload {
+                    current: i + 1,
+                    total,
+                    filename: filename.clone(),
+                    phase: format!("PDF生成: 画像読み込み中 ({}/{})", i + 1, total),
+                    in_progress: 0,
+                },
+            );
+        }
 
         let file_path = input_path.join(filename);
 
@@ -102,13 +107,18 @@ pub fn generate_single_pdf(
             }
         };
 
-        let _ = app_handle.emit("progress", crate::ProgressPayload {
-            current: i + 1,
-            total,
-            filename: filename.clone(),
-            phase: format!("PDF生成: ページ追加中 ({}/{})", i + 1, total),
-            in_progress: 0,
-        });
+        if let Some(app_handle) = app_handle {
+            let _ = app_handle.emit(
+                "progress",
+                crate::ProgressPayload {
+                    current: i + 1,
+                    total,
+                    filename: filename.clone(),
+                    phase: format!("PDF生成: ページ追加中 ({}/{})", i + 1, total),
+                    in_progress: 0,
+                },
+            );
+        }
 
         let page_width_mm = px_to_mm(img_w, dpi);
         let page_height_mm = px_to_mm(img_h, dpi);
@@ -117,7 +127,11 @@ pub fn generate_single_pdf(
 
         // 2ページ目以降は新しいページを追加
         if i > 0 {
-            let (page, layer) = doc.add_page(Mm(page_width_with_padding), Mm(page_height_with_padding), "Layer 1");
+            let (page, layer) = doc.add_page(
+                Mm(page_width_with_padding),
+                Mm(page_height_with_padding),
+                "Layer 1",
+            );
             current_layer = doc.get_page(page).get_layer(layer);
         }
 
@@ -135,24 +149,29 @@ pub fn generate_single_pdf(
         // ノンブル描画
         if let Some(ref font) = nombre_font {
             let page_num = (i + 1).to_string();
-            let text_x = page_width_with_padding / 2.0 - (page_num.len() as f32 * nombre_font_size_pt * 0.3 / 2.0);
+            let text_x = page_width_with_padding / 2.0
+                - (page_num.len() as f32 * nombre_font_size_pt * 0.3 / 2.0);
             let text_y = padding_mm / 2.0 - nombre_font_size_pt * 0.35 / 2.0;
             current_layer.use_text(&page_num, nombre_font_size_pt, Mm(text_x), Mm(text_y), font);
         }
     }
 
     // PDF保存
-    let _ = app_handle.emit("progress", crate::ProgressPayload {
-        current: total,
-        total,
-        filename: "".to_string(),
-        phase: "PDF生成: ファイル保存中...".to_string(),
-        in_progress: 0,
-    });
+    if let Some(app_handle) = app_handle {
+        let _ = app_handle.emit(
+            "progress",
+            crate::ProgressPayload {
+                current: total,
+                total,
+                filename: "".to_string(),
+                phase: "PDF生成: ファイル保存中...".to_string(),
+                in_progress: 0,
+            },
+        );
+    }
 
     let actual_path = unique_output_path(output_path);
-    let file = File::create(&actual_path)
-        .map_err(|e| format!("PDFファイルの作成に失敗: {}", e))?;
+    let file = File::create(&actual_path).map_err(|e| format!("PDFファイルの作成に失敗: {}", e))?;
     let mut writer = BufWriter::new(file);
 
     doc.save(&mut writer)

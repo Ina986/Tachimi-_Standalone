@@ -1,13 +1,110 @@
 mod processor;
 
-use processor::{ProcessOptions, ProcessResult, ImageInfo, PreviewFileInfo, WorkInfo, WorkInfoPreview, FileEntry};
+use processor::{
+    FileEntry, ImageInfo, PreviewFileInfo, ProcessOptions, ProcessResult, WorkInfo, WorkInfoPreview,
+};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
+
+#[derive(Debug, Deserialize)]
+struct PdfJobBatch {
+    jobs: Vec<PdfJobItem>,
+    result_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PdfJobItem {
+    input_folder: String,
+    output_path: String,
+    files: Vec<String>,
+    options: processor::PdfOptions,
+}
+
+#[derive(Debug, Serialize)]
+struct PdfJobBatchResult {
+    success: bool,
+    results: Vec<PdfJobItemResult>,
+}
+
+#[derive(Debug, Serialize)]
+struct PdfJobItemResult {
+    output_path: String,
+    success: bool,
+    error: Option<String>,
+}
+
+fn run_pdf_job_file(job_path: String) -> bool {
+    let result = (|| -> PdfJobBatchResult {
+        let content = match std::fs::read_to_string(&job_path) {
+            Ok(content) => content,
+            Err(e) => {
+                return PdfJobBatchResult {
+                    success: false,
+                    results: vec![PdfJobItemResult {
+                        output_path: String::new(),
+                        success: false,
+                        error: Some(format!("PDFジョブファイルを読み込めません: {}", e)),
+                    }],
+                };
+            }
+        };
+
+        let batch: PdfJobBatch = match serde_json::from_str(&content) {
+            Ok(batch) => batch,
+            Err(e) => {
+                return PdfJobBatchResult {
+                    success: false,
+                    results: vec![PdfJobItemResult {
+                        output_path: String::new(),
+                        success: false,
+                        error: Some(format!("PDFジョブJSONを解析できません: {}", e)),
+                    }],
+                };
+            }
+        };
+
+        let mut results = Vec::with_capacity(batch.jobs.len());
+        for job in batch.jobs {
+            let output_path = job.output_path.clone();
+            let item = match processor::generate_pdf_headless(
+                &job.input_folder,
+                &job.output_path,
+                &job.files,
+                &job.options,
+            ) {
+                Ok(path) => PdfJobItemResult {
+                    output_path: path,
+                    success: true,
+                    error: None,
+                },
+                Err(e) => PdfJobItemResult {
+                    output_path,
+                    success: false,
+                    error: Some(e),
+                },
+            };
+            results.push(item);
+        }
+
+        let success = results.iter().all(|r| r.success);
+        let batch_result = PdfJobBatchResult { success, results };
+
+        if let Some(result_path) = batch.result_path {
+            if let Ok(json) = serde_json::to_string_pretty(&batch_result) {
+                let _ = std::fs::write(result_path, json);
+            }
+        }
+
+        batch_result
+    })();
+
+    result.success
+}
 
 /// 自然順ソート用の比較関数
 /// 文字列中の数値部分を数値として比較する（例: "p2" < "p10"）
@@ -121,11 +218,11 @@ fn init_thread_pool() {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgressPayload {
-    pub current: usize,      // 完了数
-    pub total: usize,        // 合計
+    pub current: usize, // 完了数
+    pub total: usize,   // 合計
     pub filename: String,
     pub phase: String,
-    pub in_progress: usize,  // 現在処理中のファイル数
+    pub in_progress: usize, // 現在処理中のファイル数
 }
 
 /// フォルダ内の画像ファイル一覧を取得
@@ -188,10 +285,10 @@ async fn get_image_files_recursive(folder_path: String) -> Result<Vec<FileEntry>
                 let ext_lower = ext.to_string_lossy().to_lowercase();
                 if extensions.contains(&ext_lower.as_str()) {
                     if let Ok(rel) = path.strip_prefix(&base_path) {
-                        let relative_path = rel.to_string_lossy().to_string()
-                            .replace('\\', "/");
+                        let relative_path = rel.to_string_lossy().to_string().replace('\\', "/");
 
-                        let subfolder = rel.parent()
+                        let subfolder = rel
+                            .parent()
                             .map(|p| p.to_string_lossy().to_string().replace('\\', "/"))
                             .unwrap_or_default();
 
@@ -244,21 +341,22 @@ async fn get_image_preview(file_path: String, max_size: u32) -> Result<ImageInfo
 async fn get_image_preview_as_file(
     app_handle: tauri::AppHandle,
     file_path: String,
-    max_size: u32
+    max_size: u32,
 ) -> Result<PreviewFileInfo, String> {
     // 進捗通知: 読み込み開始
     let _ = app_handle.emit("preview_progress", "reading");
 
     // 一時ディレクトリを取得
     let temp_dir = std::env::temp_dir().join("tachimi_preview");
-    std::fs::create_dir_all(&temp_dir)
-        .map_err(|e| format!("一時フォルダの作成に失敗: {}", e))?;
+    std::fs::create_dir_all(&temp_dir).map_err(|e| format!("一時フォルダの作成に失敗: {}", e))?;
     let temp_dir_str = temp_dir.to_string_lossy().to_string();
 
     // 非同期でブロッキング処理を実行（UIフリーズを防止）
     let result = tokio::task::spawn_blocking(move || {
         processor::get_image_preview_file(&file_path, max_size, &temp_dir_str)
-    }).await.map_err(|e| format!("タスクエラー: {}", e))?;
+    })
+    .await
+    .map_err(|e| format!("タスクエラー: {}", e))?;
 
     result
 }
@@ -324,7 +422,7 @@ async fn process_images(
 
     let total = files.len();
     let processed = AtomicUsize::new(0);
-    let in_progress = AtomicUsize::new(0);  // 現在処理中のファイル数
+    let in_progress = AtomicUsize::new(0); // 現在処理中のファイル数
     let errors: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
     // rayon並列処理で複数ファイルを同時処理
@@ -338,13 +436,16 @@ async fn process_images(
         // 処理開始を通知
         let started = in_progress.fetch_add(1, Ordering::SeqCst) + 1;
         let done = processed.load(Ordering::SeqCst);
-        let _ = app_handle.emit("progress", ProgressPayload {
-            current: done,
-            total,
-            filename: filename.clone(),
-            phase: format!("読み込み中... ({} 処理中)", started),
-            in_progress: started,
-        });
+        let _ = app_handle.emit(
+            "progress",
+            ProgressPayload {
+                current: done,
+                total,
+                filename: filename.clone(),
+                phase: format!("読み込み中... ({} 処理中)", started),
+                in_progress: started,
+            },
+        );
 
         let input_file = input_path.join(filename);
         // 相対パス（例: "chapter01/p001.psd"）の場合、サブフォルダ構造を出力にミラー
@@ -369,23 +470,30 @@ async fn process_images(
         let page_number = options.nombre_start_number + index as u32;
 
         // 画像処理を実行
-        let result = processor::process_single_image(&input_file, &output_file, &options, page_number);
+        let result =
+            processor::process_single_image(&input_file, &output_file, &options, page_number);
 
         // 処理完了後に進捗を送信
         in_progress.fetch_sub(1, Ordering::SeqCst);
         let completed = processed.fetch_add(1, Ordering::SeqCst) + 1;
         let currently_processing = in_progress.load(Ordering::SeqCst);
-        let _ = app_handle.emit("progress", ProgressPayload {
-            current: completed,
-            total,
-            filename: filename.clone(),
-            phase: if currently_processing > 0 {
-                format!("変換完了 ({}/{}) - {} 処理中", completed, total, currently_processing)
-            } else {
-                format!("変換完了 ({}/{})", completed, total)
+        let _ = app_handle.emit(
+            "progress",
+            ProgressPayload {
+                current: completed,
+                total,
+                filename: filename.clone(),
+                phase: if currently_processing > 0 {
+                    format!(
+                        "変換完了 ({}/{}) - {} 処理中",
+                        completed, total, currently_processing
+                    )
+                } else {
+                    format!("変換完了 ({}/{})", completed, total)
+                },
+                in_progress: currently_processing,
             },
-            in_progress: currently_processing,
-        });
+        );
 
         match result {
             Ok(_) => {}
@@ -406,7 +514,10 @@ async fn process_images(
         return Ok(ProcessResult {
             processed: done,
             total,
-            errors: vec![format!("処理がキャンセルされました ({}/{}完了)", done, total)],
+            errors: vec![format!(
+                "処理がキャンセルされました ({}/{}完了)",
+                done, total
+            )],
             output_folder: actual_output_folder,
         });
     }
@@ -443,8 +554,8 @@ async fn generate_pdf(
 #[tauri::command]
 async fn get_default_output_folder() -> Result<String, String> {
     // デスクトップパスを取得
-    let desktop = dirs::desktop_dir()
-        .ok_or_else(|| "デスクトップパスを取得できません".to_string())?;
+    let desktop =
+        dirs::desktop_dir().ok_or_else(|| "デスクトップパスを取得できません".to_string())?;
 
     let output_folder = desktop.join("Script_Output").join("処理結果PDF");
 
@@ -513,21 +624,27 @@ async fn list_folder_contents(folder_path: String) -> Result<FolderContents, Str
 
     folders.sort_by(|a, b| natural_cmp(a, b));
     json_files.sort_by(|a, b| natural_cmp(a, b));
-    Ok(FolderContents { folders, json_files })
+    Ok(FolderContents {
+        folders,
+        json_files,
+    })
 }
 
 /// 作品タイトル検索結果
 #[derive(Debug, Clone, Serialize)]
 pub struct SearchResult {
-    pub label: String,      // レーベル名（親フォルダ名）
-    pub title: String,      // 作品タイトル（フォルダ名）
-    pub path: String,       // フルパス
+    pub label: String, // レーベル名（親フォルダ名）
+    pub title: String, // 作品タイトル（フォルダ名）
+    pub path: String,  // フルパス
 }
 
 /// フォルダ内を検索（作品タイトルで検索）
 /// 構造: JSONフォルダ / レーベル / 作品タイトル.json
 #[tauri::command]
-async fn search_json_folders(base_path: String, query: String) -> Result<Vec<SearchResult>, String> {
+async fn search_json_folders(
+    base_path: String,
+    query: String,
+) -> Result<Vec<SearchResult>, String> {
     println!("検索開始: base_path={}, query={}", base_path, query);
     let path = PathBuf::from(&base_path);
     if !path.exists() {
@@ -559,7 +676,8 @@ async fn search_json_folders(base_path: String, query: String) -> Result<Vec<Sea
                         // 検索クエリにマッチするか確認
                         if title_str.to_lowercase().contains(&query_lower) {
                             // 親フォルダ（レーベル）名を取得
-                            let label = entry_path.parent()
+                            let label = entry_path
+                                .parent()
                                 .and_then(|p| p.file_name())
                                 .map(|n| n.to_string_lossy().to_string())
                                 .unwrap_or_default();
@@ -579,7 +697,11 @@ async fn search_json_folders(base_path: String, query: String) -> Result<Vec<Sea
 
     // タイトルでソート
     results.sort_by(|a, b| a.title.cmp(&b.title));
-    println!("検索完了: エントリ数={}, 結果数={}", entry_count, results.len());
+    println!(
+        "検索完了: エントリ数={}, 結果数={}",
+        entry_count,
+        results.len()
+    );
     Ok(results)
 }
 
@@ -652,14 +774,13 @@ async fn save_json_file(path: String, content: String) -> Result<(), String> {
     // 親フォルダが存在しない場合は作成
     if let Some(parent) = file_path.parent() {
         if !parent.exists() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
         }
     }
 
     // UTF-8 BOMなしで保存
-    let mut file = fs::File::create(&file_path)
-        .map_err(|e| format!("ファイルの作成に失敗: {}", e))?;
+    let mut file =
+        fs::File::create(&file_path).map_err(|e| format!("ファイルの作成に失敗: {}", e))?;
 
     file.write_all(content.as_bytes())
         .map_err(|e| format!("ファイルの書き込みに失敗: {}", e))?;
@@ -679,8 +800,7 @@ async fn read_json_file(path: String) -> Result<String, String> {
         return Err(format!("ファイルが存在しません: {}", path));
     }
 
-    fs::read_to_string(&file_path)
-        .map_err(|e| format!("ファイルの読み込みに失敗: {}", e))
+    fs::read_to_string(&file_path).map_err(|e| format!("ファイルの読み込みに失敗: {}", e))
 }
 
 /// フォルダが存在しない場合は作成
@@ -691,8 +811,7 @@ async fn ensure_folder_exists(path: String) -> Result<(), String> {
     let folder_path = PathBuf::from(&path);
 
     if !folder_path.exists() {
-        fs::create_dir_all(&folder_path)
-            .map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
+        fs::create_dir_all(&folder_path).map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
         println!("フォルダ作成: {}", path);
     }
 
@@ -708,15 +827,23 @@ async fn file_exists(path: String) -> Result<bool, String> {
 
 /// PSDファイルからガイド情報を取得
 #[tauri::command]
-async fn get_psd_guides(file_path: String) -> Result<Vec<processor::image_loader::PsdGuide>, String> {
+async fn get_psd_guides(
+    file_path: String,
+) -> Result<Vec<processor::image_loader::PsdGuide>, String> {
     let path = PathBuf::from(&file_path);
     processor::image_loader::extract_psd_guides(&path)
 }
 
 /// 作品情報の折り返しプレビューを計算
 #[tauri::command]
-async fn preview_work_info(work_info: WorkInfo, width: u32, height: u32) -> Result<WorkInfoPreview, String> {
-    Ok(processor::pdf::common::compute_work_info_lines(&work_info, width, height))
+async fn preview_work_info(
+    work_info: WorkInfo,
+    width: u32,
+    height: u32,
+) -> Result<WorkInfoPreview, String> {
+    Ok(processor::pdf::common::compute_work_info_lines(
+        &work_info, width, height,
+    ))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -724,13 +851,31 @@ pub fn run() {
     // 並列処理のスレッドプールを初期化（CPUコア数の2倍）
     init_thread_pool();
 
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(pos) = args.iter().position(|a| a == "--pdf-job") {
+        if let Some(job_path) = args.get(pos + 1) {
+            let success = run_pdf_job_file(job_path.clone());
+            std::process::exit(if success { 0 } else { 1 });
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|_app| {
+        .setup(|app| {
             let args: Vec<String> = std::env::args().collect();
+
+            if let Some(pos) = args.iter().position(|a| a == "--pdf-job") {
+                if let Some(job_path) = args.get(pos + 1) {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.hide();
+                    }
+                    let success = run_pdf_job_file(job_path.clone());
+                    std::process::exit(if success { 0 } else { 1 });
+                }
+            }
 
             // 1. --files <json_path> フラグからの読み込み（COMIC-Bridge等からの連携用）
             if let Some(pos) = args.iter().position(|a| a == "--files") {
@@ -747,7 +892,8 @@ pub fn run() {
             // 2. 位置引数からフォルダ/ファイルパスを検出
             //    デスクトップアイコンへのD&D時、Windowsがパスを引数として渡す
             //    args[0]は実行ファイル自身なのでスキップ、"-"始まりのフラグも除外
-            let paths: Vec<String> = args.iter()
+            let paths: Vec<String> = args
+                .iter()
                 .skip(1)
                 .filter(|a| !a.starts_with('-'))
                 .filter(|a| std::path::Path::new(a).exists())

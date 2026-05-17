@@ -7,7 +7,7 @@ use imageproc::drawing::draw_text_mut;
 use printpdf::{Image, ImageXObject, ImageFilter, ColorSpace, ColorBits, Px};
 use std::path::Path;
 
-use crate::processor::jpeg::{encode_jpeg_mozjpeg, get_jpeg_dimensions, is_jpeg_file};
+use crate::processor::jpeg::{get_jpeg_dimensions, is_jpeg_file};
 use crate::processor::image_loader::load_image;
 use crate::processor::cache::get_cached_jp_font_data;
 use crate::processor::types::{WorkInfo, WorkInfoPreview};
@@ -18,16 +18,6 @@ pub const DEFAULT_DPI: f32 = 350.0;
 /// ピクセルをmmに変換
 pub fn px_to_mm(px: u32, dpi: f32) -> f32 {
     px as f32 / dpi * 25.4
-}
-
-/// mmをピクセルに変換
-pub fn mm_to_px(mm: f32, dpi: f32) -> u32 {
-    (mm / 25.4 * dpi) as u32
-}
-
-/// ページサイズをmmで計算
-pub fn calc_page_size_mm(width_px: u32, height_px: u32, dpi: f32) -> (f32, f32) {
-    (px_to_mm(width_px, dpi), px_to_mm(height_px, dpi))
 }
 
 /// 画像のサイズを取得（JPEGの場合は高速パス）
@@ -46,7 +36,11 @@ pub fn get_image_dimensions(path: &Path) -> Result<(u32, u32), String> {
 /// 画像をMozJPEGエンコードしてPDF用Imageを作成
 pub fn create_pdf_image(img: &DynamicImage) -> Option<Image> {
     let rgb_img = img.to_rgb8();
-    let jpeg_data = encode_jpeg_mozjpeg(rgb_img.as_raw(), rgb_img.width(), rgb_img.height(), 100.0)?;
+    let mut jpeg_data = Vec::new();
+    {
+        let mut encoder = ::image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 95);
+        encoder.encode_image(&rgb_img).ok()?;
+    }
 
     Some(Image::from(ImageXObject {
         width: Px(img.width() as usize),
@@ -61,105 +55,84 @@ pub fn create_pdf_image(img: &DynamicImage) -> Option<Image> {
     }))
 }
 
-/// JPEGファイルから直接PDF用Imageを作成（デコード不要で高速）
+fn direct_pdf_jpeg_color_space(data: &[u8]) -> Option<ColorSpace> {
+    if data.len() < 2 || data[0] != 0xFF || data[1] != 0xD8 {
+        return None;
+    }
+
+    let mut i = 2;
+    while i + 9 < data.len() {
+        while i < data.len() && data[i] != 0xFF {
+            i += 1;
+        }
+        if i + 1 >= data.len() {
+            break;
+        }
+        while i + 1 < data.len() && data[i + 1] == 0xFF {
+            i += 1;
+        }
+
+        let marker = data[i + 1];
+        if marker == 0x00 {
+            i += 2;
+            continue;
+        }
+        if marker == 0xC0 {
+            return match data[i + 9] {
+                1 => Some(ColorSpace::Greyscale),
+                3 => Some(ColorSpace::Rgb),
+                4 => Some(ColorSpace::Cmyk),
+                _ => None,
+            };
+        }
+
+        if matches!(marker, 0xC1..=0xC3 | 0xC5..=0xC7 | 0xC9..=0xCB | 0xCD..=0xCF) {
+            return None;
+        }
+
+        if marker == 0xD8 || marker == 0xD9 || (0xD0..=0xD7).contains(&marker) {
+            i += 2;
+            continue;
+        }
+
+        if i + 3 >= data.len() {
+            break;
+        }
+        let len = ((data[i + 2] as usize) << 8) | data[i + 3] as usize;
+        if len < 2 {
+            return None;
+        }
+        i += 2 + len;
+    }
+
+    None
+}
+
+/// JPEGファイルからPDF用Imageを作成。
+///
+/// ベースラインJPEGはコンポーネント数に合う色空間で高速に直埋めし、
+/// プログレッシブなどAcrobat互換性に不安があるJPEGだけRGB JPEGへ正規化する。
 pub fn create_pdf_image_from_jpeg_file(path: &Path) -> Option<(Image, u32, u32)> {
     let jpeg_data = std::fs::read(path).ok()?;
     let (width, height) = get_jpeg_dimensions(&jpeg_data)?;
 
-    let image = Image::from(ImageXObject {
-        width: Px(width as usize),
-        height: Px(height as usize),
-        color_space: ColorSpace::Rgb,
-        bits_per_component: ColorBits::Bit8,
-        interpolate: true,
-        image_data: jpeg_data,
-        image_filter: Some(ImageFilter::DCT),
-        clipping_bbox: None,
-        smask: None,
-    });
-
-    Some((image, width, height))
-}
-
-/// 画像を読み込んでPDF用Imageを作成
-pub fn load_and_create_pdf_image(path: &Path) -> Result<(Image, u32, u32), String> {
-    if is_jpeg_file(path) {
-        create_pdf_image_from_jpeg_file(path)
-            .ok_or_else(|| "JPEGファイルの読み込みに失敗".to_string())
-    } else {
-        let img = load_image(path)?;
-        let (w, h) = img.dimensions();
-        create_pdf_image(&img)
-            .map(|pdf_img| (pdf_img, w, h))
-            .ok_or_else(|| "PDF画像の変換に失敗".to_string())
-    }
-}
-
-/// 2枚の画像を横に結合（見開き用）
-pub fn combine_images_horizontal(left: &DynamicImage, right: Option<&DynamicImage>, gutter_px: u32) -> DynamicImage {
-    let left_rgba = left.to_rgba8();
-    let (left_w, left_h) = left_rgba.dimensions();
-    let left_raw = left_rgba.as_raw();
-
-    let (right_rgba, right_w, right_h) = if let Some(r) = right {
-        let rgba = r.to_rgba8();
-        let (w, h) = rgba.dimensions();
-        (Some(rgba), w, h)
-    } else {
-        (None, 0, 0)
-    };
-
-    let combined_width = left_w + right_w + gutter_px;
-    let combined_height = left_h.max(right_h);
-    let mut combined = vec![255u8; (combined_width * combined_height * 4) as usize];
-    let stride = combined_width as usize * 4;
-
-    // 左画像をコピー
-    let left_stride = left_w as usize * 4;
-    for y in 0..left_h as usize {
-        let src_start = y * left_stride;
-        let dst_start = y * stride;
-        combined[dst_start..dst_start + left_stride].copy_from_slice(&left_raw[src_start..src_start + left_stride]);
+    if let Some(color_space) = direct_pdf_jpeg_color_space(&jpeg_data) {
+        let image = Image::from(ImageXObject {
+            width: Px(width as usize),
+            height: Px(height as usize),
+            color_space,
+            bits_per_component: ColorBits::Bit8,
+            interpolate: true,
+            image_data: jpeg_data,
+            image_filter: Some(ImageFilter::DCT),
+            clipping_bbox: None,
+            smask: None,
+        });
+        return Some((image, width, height));
     }
 
-    // 右画像をコピー
-    if let Some(ref right_data) = right_rgba {
-        let right_raw = right_data.as_raw();
-        let right_stride = right_w as usize * 4;
-        let right_offset = (left_w + gutter_px) as usize * 4;
-        for y in 0..right_h as usize {
-            let src_start = y * right_stride;
-            let dst_start = y * stride + right_offset;
-            combined[dst_start..dst_start + right_stride].copy_from_slice(&right_raw[src_start..src_start + right_stride]);
-        }
-    }
-
-    let img_buffer: RgbaImage = ImageBuffer::from_raw(combined_width, combined_height, combined)
-        .expect("Combined image buffer creation failed");
-    DynamicImage::ImageRgba8(img_buffer)
-}
-
-/// 画像に余白を追加
-pub fn add_padding_to_image(img: &DynamicImage, padding_px: u32) -> DynamicImage {
-    let rgba = img.to_rgba8();
-    let (w, h) = rgba.dimensions();
-    let raw = rgba.as_raw();
-
-    let new_width = w + padding_px * 2;
-    let new_height = h + padding_px * 2;
-    let mut padded = vec![255u8; (new_width * new_height * 4) as usize];
-    let new_stride = new_width as usize * 4;
-    let old_stride = w as usize * 4;
-
-    for y in 0..h as usize {
-        let src_start = y * old_stride;
-        let dst_start = (y + padding_px as usize) * new_stride + (padding_px as usize * 4);
-        padded[dst_start..dst_start + old_stride].copy_from_slice(&raw[src_start..src_start + old_stride]);
-    }
-
-    let img_buffer: RgbaImage = ImageBuffer::from_raw(new_width, new_height, padded)
-        .expect("Padded image buffer creation failed");
-    DynamicImage::ImageRgba8(img_buffer)
+    let img = load_image(path).ok()?;
+    create_pdf_image(&img).map(|image| (image, width, height))
 }
 
 /// 出力パスが既存の場合、連番を付与してユニークなパスを返す
@@ -209,7 +182,11 @@ pub fn create_white_page_image(width: u32, height: u32, work_info: Option<&WorkI
         ::image::Rgb([p[0], p[1], p[2]])
     });
 
-    let jpeg_data = encode_jpeg_mozjpeg(rgb_img.as_raw(), width, height, 100.0)?;
+    let mut jpeg_data = Vec::new();
+    {
+        let mut encoder = ::image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_data, 95);
+        encoder.encode_image(&rgb_img).ok()?;
+    }
 
     Some(Image::from(ImageXObject {
         width: Px(width as usize),

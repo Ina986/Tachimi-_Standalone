@@ -278,19 +278,6 @@ pub fn fill_outside_crop(
     }
 }
 
-/// アルファブレンド
-pub fn blend_pixels(base: Rgba<u8>, overlay: Rgba<u8>) -> Rgba<u8> {
-    let alpha = overlay[3] as f32 / 255.0;
-    let inv_alpha = 1.0 - alpha;
-
-    Rgba([
-        (base[0] as f32 * inv_alpha + overlay[0] as f32 * alpha) as u8,
-        (base[1] as f32 * inv_alpha + overlay[1] as f32 * alpha) as u8,
-        (base[2] as f32 * inv_alpha + overlay[2] as f32 * alpha) as u8,
-        255,
-    ])
-}
-
 /// 画像にノンブル（ページ番号）を追加
 pub fn add_nombre_to_image(img: &mut RgbaImage, page_num: u32, size_key: &str, crop_bottom: u32) {
     let font_size = get_nombre_font_size(size_key);

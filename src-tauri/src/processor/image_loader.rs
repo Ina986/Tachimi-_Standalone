@@ -1,7 +1,7 @@
 //! タチミ - 画像読み込みモジュール
 //! PSD/PNG/JPEG/TIFFなどの画像読み込みを担当
 
-use ::image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
+use ::image::{DynamicImage, ImageBuffer, RgbaImage};
 use serde::Serialize;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -273,83 +273,6 @@ fn load_psd_with_layers(path: &Path) -> Result<DynamicImage, String> {
         .ok_or("PSD画像の変換に失敗")?;
 
     Ok(DynamicImage::ImageRgba8(img))
-}
-
-/// PSDファイルからサムネイルを抽出（高速プレビュー用）
-pub fn extract_psd_thumbnail(path: &Path) -> Option<(DynamicImage, u32, u32)> {
-    let mut file = File::open(path).ok()?;
-    let mut buf4 = [0u8; 4];
-    let mut buf2 = [0u8; 2];
-
-    // PSD signature check
-    file.read_exact(&mut buf4).ok()?;
-    if &buf4 != b"8BPS" {
-        return None;
-    }
-
-    // Skip to dimensions
-    file.seek(SeekFrom::Current(10)).ok()?;
-
-    file.read_exact(&mut buf4).ok()?;
-    let height = u32::from_be_bytes(buf4);
-
-    file.read_exact(&mut buf4).ok()?;
-    let width = u32::from_be_bytes(buf4);
-
-    file.seek(SeekFrom::Current(4)).ok()?;
-
-    // Color Mode Data Section
-    file.read_exact(&mut buf4).ok()?;
-    let color_mode_len = u32::from_be_bytes(buf4);
-    file.seek(SeekFrom::Current(color_mode_len as i64)).ok()?;
-
-    // Image Resources Section
-    file.read_exact(&mut buf4).ok()?;
-    let resources_len = u32::from_be_bytes(buf4);
-    let resources_end = file.stream_position().ok()? + resources_len as u64;
-
-    // Search for thumbnail resource (ID 1036 or 1033)
-    while file.stream_position().ok()? < resources_end {
-        file.read_exact(&mut buf4).ok()?;
-        if &buf4 != b"8BIM" {
-            break;
-        }
-
-        file.read_exact(&mut buf2).ok()?;
-        let resource_id = u16::from_be_bytes(buf2);
-
-        let mut name_len_buf = [0u8; 1];
-        file.read_exact(&mut name_len_buf).ok()?;
-        let name_len = name_len_buf[0] as u64;
-        let padded_name_len = if (name_len + 1) % 2 == 0 { name_len } else { name_len + 1 };
-        file.seek(SeekFrom::Current(padded_name_len as i64)).ok()?;
-
-        file.read_exact(&mut buf4).ok()?;
-        let data_size = u32::from_be_bytes(buf4);
-
-        if resource_id == 1036 || resource_id == 1033 {
-            file.read_exact(&mut buf4).ok()?;
-            let format = u32::from_be_bytes(buf4);
-
-            if format == 1 {
-                file.seek(SeekFrom::Current(24)).ok()?;
-
-                let jpeg_size = data_size - 28;
-                let mut jpeg_data = vec![0u8; jpeg_size as usize];
-                file.read_exact(&mut jpeg_data).ok()?;
-
-                if let Ok(img) = ::image::load_from_memory_with_format(&jpeg_data, ImageFormat::Jpeg) {
-                    return Some((img, width, height));
-                }
-            }
-            return None;
-        }
-
-        let padded_size = if data_size % 2 == 0 { data_size } else { data_size + 1 };
-        file.seek(SeekFrom::Current(padded_size as i64)).ok()?;
-    }
-
-    None
 }
 
 /// PSDファイルからガイド情報を抽出

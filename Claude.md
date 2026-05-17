@@ -456,3 +456,29 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [ ] 処理履歴の表示
 - [ ] 設定のエクスポート/インポート
 - [ ] テスト基盤の構築
+
+---
+
+## v1.2.22: Daiwari PDFジョブ連携・Acrobat互換JPEG埋め込み・デッドコード削除
+
+### A. Daiwari ManagerからのPDFジョブ実行に対応
+
+A1. **`--pdf-job` ヘッドレス実行を追加** ([src-tauri/src/lib.rs](src-tauri/src/lib.rs)): Daiwari Managerから渡されたジョブJSONを読み取り、UIを表示せず `generate_pdf_headless` を実行して結果JSONを書き戻す経路を追加。
+
+A2. **アプリ内PDF生成とヘッドレスPDF生成を共通化** ([src-tauri/src/processor/mod.rs](src-tauri/src/processor/mod.rs), [src-tauri/src/processor/pdf/single.rs](src-tauri/src/processor/pdf/single.rs), [src-tauri/src/processor/pdf/spread.rs](src-tauri/src/processor/pdf/spread.rs)): Tauriの進捗イベントが不要なヘッドレス実行でも同じPDF生成処理を使えるよう、`AppHandle` を任意扱いにした。
+
+### B. PDF画像破損対策
+
+B1. **JPEG直埋め時の色空間判定を追加** ([src-tauri/src/processor/pdf/common.rs](src-tauri/src/processor/pdf/common.rs)): JPEG SOFマーカーからコンポーネント数を読み取り、グレースケール/RGB/CMYKを正しい `ColorSpace` でPDFに埋め込むようにした。
+
+B2. **Acrobat互換性が不安なJPEGだけ再エンコード**: プログレッシブJPEGなど安全に直埋めできない形式はRGB JPEGへ正規化し、通常のベースラインJPEGは高速に直埋めする。
+
+B3. **白ページ生成JPEGを標準エンコーダへ変更**: PDF内の白紙ページ生成で画像データ不足が起きないよう、白JPEGの生成経路を安定化した。
+
+### C. デッドコード削除
+
+C1. **未使用ヘルパーを削除**: `extract_psd_thumbnail`, `blend_pixels`, `mm_to_px`, `calc_page_size_mm`, `load_and_create_pdf_image`, `combine_images_horizontal`, `add_padding_to_image` を削除し、関連する未使用importも整理。
+
+### バージョン同期
+
+`src-tauri/Cargo.toml` / `src-tauri/Cargo.lock` / `src-tauri/tauri.conf.json` を **`1.2.22`** に更新。
