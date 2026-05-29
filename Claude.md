@@ -11,6 +11,34 @@
 - **画像処理**: image crate, imageproc, ab_glyph（フォント描画）, psd crate, mozjpeg
 - **PDF生成**: printpdf crate
 
+## ⚠️ セキュリティ重要事項（要維持）
+
+> セキュリティレビュー実施日: 2026-05-29（v1.2.22）。過去に懸念とされた「WebViewからPC全ファイルへアクセス可能」「CSP無効」は**いずれも対策済み**であることを確認。**以下の防御は今後も崩さないこと。**
+
+### 1. WebViewには最小権限しか与えない（全ファイルアクセス防止）
+- [capabilities/default.json](src-tauri/capabilities/default.json) で許可しているのは **`core:app:allow-version` / `core:event:allow-listen,unlisten` / `dialog:allow-message` / `updater:allow-check,allow-download-and-install` のみ**。
+- **`fs:*` / `shell:*` 権限は一切付与しない**こと。フロントからファイルシステムを直接叩く経路を作らない。
+- `tauri-plugin-fs` / `tauri-plugin-shell` は Cargo.toml に依存として残っているが、[lib.rs](src-tauri/src/lib.rs) の `Builder` では **`.plugin()` 登録していない（= 無効）**。dialog と updater のみ登録。安易に有効化しない。
+
+### 2. ファイルアクセスは全て「許可リスト方式」のRustコマンド経由
+- ファイル操作は全てカスタムコマンド経由で行い、`SecurityState`（`allowed_roots`）の許可リストで制限する。
+- 許可ルートに登録されるのは **OSダイアログ選択 / ドラッグ&ドロップ / CLI引数・トリガーファイル / ハードコードされた `JSON_FOLDER_PATH` / プレビュー用一時フォルダ** のみ。
+- アクセス時は `canonicalize`（シンボリックリンク解決）してから許可ルート配下かを `starts_with` で検証（`ensure_allowed_canonical`）。
+- パストラバーサル対策: `..`/`.` 拒否、書き込みは絶対パス必須、Windows予約名（CON/PRN等）・禁止文字・制御文字を拒否（`validate_safe_file_name`）。
+- **新規コマンドを追加する際は、必ず `security.ensure_existing_*` / `ensure_write_*` を通すこと。** 生パスを直接 `std::fs` に渡さない。
+
+### 3. CSPは有効に保つ（無効化しない）
+- [tauri.conf.json](src-tauri/tauri.conf.json) の `app.security.csp` を設定済み。**`script-src 'self'`（インラインJS不可）/ `object-src 'none'` を維持**すること。
+- `connect-src` は自己＋GitHub（更新チェック）に限定。`style-src 'unsafe-inline'` はCSSのみで許容範囲。
+- `assetProtocol` のスコープは `$TEMP/tachimi_preview/**` に限定。広げない。
+
+### 4. 自動更新は署名検証必須
+- minisign公開鍵による署名検証 + HTTPS（GitHub Releases）。pubkey/endpoint を勝手に変更しない。
+
+### 残存リスク（低・ローカル限定。対応は任意）
+- **`--pdf-job` ヘッドレス経路は `SecurityState` 検証を通っていない**（`run_pdf_job_file` がジョブJSONの `input_folder`/`output_path` を直接使用）。WebViewからは到達不可で、悪用にはローカルでのプロセス起動権限が前提のため危険度は低い。固める場合はこの経路の `output_path` も許可リスト検証に通す。
+- `get_cli_files` は `%TEMP%\tachimi_cli_files.json` を読んで許可リストへパスを追加する。ローカルプロセスが許可ルートを事前に仕込み得るが、実読み出しはアプリ自身のフロント（厳格CSPで改ざん不可）が要求しないと起きないため単独では情報漏洩に直結しない。
+
 ## ディレクトリ構成
 
 ```
@@ -55,7 +83,7 @@ tachimi_standalone/
 ├── src-tauri/                        # Rustバックエンド
 │   ├── src/
 │   │   ├── main.rs                   # エントリ (6行)
-│   │   ├── lib.rs                    # Tauriコマンド定義 (~560行)
+│   │   ├── lib.rs                    # Tauriコマンド定義・セキュリティ検証 (~1,450行)
 │   │   └── processor/                # 画像処理モジュール群
 │   │       ├── mod.rs                # モジュールエクスポート (160行)
 │   │       ├── types.rs              # 型定義 (153行)
@@ -69,25 +97,36 @@ tachimi_standalone/
 │   │           ├── single.rs         # 単ページPDF (157行)
 │   │           └── spread.rs         # 見開きPDF (257行)
 │   ├── capabilities/
-│   │   └── default.json              # パーミッション設定
+│   │   └── default.json              # WebView権限設定（最小権限）
+│   ├── windows/
+│   │   └── hooks.nsh                 # NSISインストーラフック
+│   ├── build.rs                      # tauri-build
 │   ├── Cargo.toml
-│   └── tauri.conf.json               # Tauri設定
+│   └── tauri.conf.json               # Tauri設定（CSP・assetProtocol含む）
 ├── Tachimi起動.bat                    # npm start を実行
 └── package.json
 ```
 
 ## 主要なTauriコマンド
 
+> 一覧は [lib.rs](src-tauri/src/lib.rs) の `invoke_handler` 登録順と一致（全25コマンド）。**全コマンドが `SecurityState` 検証を通す**（⚠️セキュリティ重要事項 参照）。
+
 | コマンド | 説明 |
 |---------|------|
+| `get_cli_files` | CLI引数/トリガーファイルから連携ファイルパスを取得し許可リストへ登録 |
+| `select_input_paths` | OSダイアログで入力フォルダを選択し、選択実体だけを許可 |
+| `select_output_folder` | OSダイアログで出力フォルダを選択し、書き込み許可 |
+| `select_json_file` | OSダイアログでJSONファイルを選択し読み込み |
 | `get_image_files` | フォルダ内の画像ファイル一覧を取得（PSDキャッシュも自動クリア） |
+| `get_image_files_recursive` | 画像ファイル一覧を再帰取得（サブフォルダ対応、FileEntry配列） |
 | `get_image_preview` | Base64形式でプレビュー取得（PSD高速読み込み+キャッシュ対応） |
 | `get_image_preview_as_file` | ファイル経由でプレビュー取得（高速） |
 | `process_images` | 画像処理（クロップ・タチキリ・リサイズ・ノンブル） |
 | `cancel_processing` | 処理キャンセル（AtomicBoolフラグを設定） |
 | `generate_pdf` | 単ページ/見開きPDF生成（余白・ノンブル対応） |
+| `get_default_output_folder` | デフォルト出力先（デスクトップ/Script_Output/処理結果PDF）を取得 |
 | `open_folder` | エクスプローラーでフォルダを開く |
-| `delete_folder` | フォルダを削除 |
+| `delete_folder` | フォルダを削除（`_temp_pdf_source` のみ許可） |
 | `clear_psd_cache` | PSD画像キャッシュを手動クリア |
 | `list_json_files` | JSONファイル一覧取得（レガシー互換） |
 | `list_folder_contents` | サブフォルダとJSONファイル一覧取得 |
@@ -96,6 +135,9 @@ tachimi_standalone/
 | `read_json_file` | JSONファイル読み込み |
 | `ensure_folder_exists` | フォルダ作成（存在しなければ） |
 | `file_exists` | ファイル存在確認 |
+| `file_stat` | ファイルサイズ取得 |
+| `get_psd_guides` | PSDファイルからガイド情報を抽出 |
+| `preview_work_info` | 作品情報の折り返しプレビューを計算 |
 
 ## フロントエンド
 
@@ -270,7 +312,7 @@ JPEG出力のみの場合:
 ## 並列処理
 
 - `rayon` で画像処理を並列化（キャンセル対応）
-- スレッド数: CPUコア数 × 2（最大32）
+- スレッド数: CPUコア数と同数（最大8スレッド、メモリ消費抑制のため）— `init_thread_pool()`
 - 進捗は `AtomicUsize` でスレッドセーフに管理
 - キャンセルは `AtomicBool` フラグで制御
 
@@ -377,7 +419,7 @@ npm run tauri build --debug  # デバッグビルド
 
 ```toml
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset", "devtools"] }
+tauri = { version = "2", features = ["protocol-asset"] }  # devtoolsは無効（本番ビルドで開発者ツールを開かせない）
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
@@ -399,11 +441,11 @@ tokio = { version = "1", features = ["rt", "sync"] }
 
 ```toml
 [profile.dev]
-opt-level = 2  # 画像処理を5-10倍高速化
+opt-level = 1  # コンパイル速度優先（重い依存のみ個別に opt-level=3）
 
 [profile.dev.package.image]
 opt-level = 3
-# ... 他の画像/PDF系crateも同様
+# ... 他の画像/PDF系crate（imageproc, mozjpeg, psd, png, printpdf, rayon 等）も opt-level=3
 ```
 
 ## 自動更新機能
@@ -449,6 +491,7 @@ https://github.com/Ina986/Tachimi-_Standalone
 - [x] 1200dpi原稿のJPEG品質自動切替（長辺7000px超でquality100を適用）
 - [x] 開発ビルド高速化（profile.dev opt-level 2→1に変更）
 - [x] 出力先フォルダの永続化（次回起動時に前回選択した出力先を自動復元、`OUTPUT_FOLDER_STORAGE_KEY`をlocalStorageに保存／リセットボタンで削除）
+- [x] セキュリティ強化（許可リスト方式の`SecurityState`、パストラバーサル対策、最小権限capabilities、CSP有効化）— レビュー確認済 2026-05-29
 
 ## 今後の改善候補
 
