@@ -1070,6 +1070,14 @@ body {
     font-size: 10px;
 }
 
+/* サイズ指定（手入力）の幅×高さ入力欄は4桁が見やすいよう広めに */
+#customSizeSettings input[type="number"] {
+    width: 72px;
+    padding: 3px 6px;
+    font-size: 12px;
+    text-align: right;
+}
+
 /* ===== タチキリ処理カード（コンパクト版）- 金属スイッチ風 ===== */
 
 .tachikiri-grid-compact {
@@ -2203,6 +2211,37 @@ body {
     text-transform: lowercase;
 }
 
+/* スライダー横の手入力欄（5刻み＋直接入力） */
+.slider-value-input {
+    width: 44px;
+    padding: 2px 4px;
+    background: var(--bg);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.slider-value-input:hover {
+    border-color: rgba(212, 168, 176, 0.3);
+}
+
+.slider-value-input:focus {
+    outline: none;
+    border-color: var(--accent2);
+}
+
+/* ファイル名の番号を使うチェック（ノンブル設定内で改行配置） */
+.nombre-fromfile {
+    flex-basis: 100%;
+    margin-top: 4px;
+}
+
 /* ===== ページ設定グループ ===== */
 .page-settings-group {
     background: linear-gradient(180deg, rgba(20, 20, 25, 0.6) 0%, rgba(15, 15, 20, 0.6) 100%);
@@ -2477,6 +2516,37 @@ body {
     color: var(--text3);
     text-align: center;
     letter-spacing: 0.02em;
+}
+
+/* 先頭白紙ページのプレビュー */
+.single-whitepage-box {
+    width: 65px;
+    height: 93px;
+    background: #f4f4f6;
+    border: 1px dashed rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.35),
+        0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.single-whitepage-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #555;
+    letter-spacing: 0.04em;
+}
+
+/* 単ページ: ページ設定（先頭白紙・作品情報）の行 */
+.single-options-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 4px;
 }
 
 /* ===== JPEGプレビュー ===== */

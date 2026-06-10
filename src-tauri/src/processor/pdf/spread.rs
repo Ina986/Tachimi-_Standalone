@@ -29,6 +29,7 @@ pub fn generate_spread_pdf(
     work_info: Option<&WorkInfo>,
     add_nombre: bool,
     nombre_size: &str,
+    nombre_from_filename: bool,
     dpi: f32,
 ) -> Result<String, String> {
     let input_path = Path::new(input_folder);
@@ -37,6 +38,20 @@ pub fn generate_spread_pdf(
     if total == 0 {
         return Err("処理するファイルがありません".to_string());
     }
+
+    // ファイル名連動ノンブル: 各ファイルの変化部分の数字を採用
+    let page_numbers = if nombre_from_filename {
+        crate::processor::extract_page_numbers_from_filenames(files)
+    } else {
+        Vec::new()
+    };
+    let page_num_for = |idx: usize, fallback: u32| -> u32 {
+        if nombre_from_filename {
+            page_numbers.get(idx).copied().unwrap_or(fallback)
+        } else {
+            fallback
+        }
+    };
 
     // 最初の画像でサイズを取得
     let first_file = input_path.join(&files[0]);
@@ -231,9 +246,10 @@ pub fn generate_spread_pdf(
             let text_y = padding_mm / 2.0 - nombre_font_size_pt * 0.35 / 2.0;
 
             if file_idx == -1 {
-                // 白紙見開き: 左ページのみノンブル
+                // 白紙見開き: 左ページ（=最初の実ページ files[0]）のみノンブル
                 if has_left_page {
-                    let left_num_str = "1".to_string();
+                    let left_page_num = page_num_for(0, 1);
+                    let left_num_str = left_page_num.to_string();
                     let left_text_x = padding_mm + left_width_mm / 2.0
                         - (left_num_str.len() as f32 * nombre_font_size_pt * 0.3 / 2.0);
                     current_layer.use_text(
@@ -245,8 +261,10 @@ pub fn generate_spread_pdf(
                     );
                 }
             } else {
-                let right_page_num = file_idx as usize + 1;
-                let left_page_num = right_page_num + 1;
+                let right_idx = file_idx as usize;
+                let left_idx = right_idx + 1;
+                let right_page_num = page_num_for(right_idx, (right_idx + 1) as u32);
+                let left_page_num = page_num_for(left_idx, (left_idx + 1) as u32);
 
                 // 右ページのノンブル
                 let right_num_str = right_page_num.to_string();

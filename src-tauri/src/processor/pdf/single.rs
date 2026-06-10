@@ -9,11 +9,12 @@ use std::path::Path;
 use tauri::Emitter;
 
 use super::common::{
-    create_pdf_image, create_pdf_image_from_jpeg_file, get_image_dimensions,
-    get_nombre_font_size_pt, px_to_mm, unique_output_path,
+    create_pdf_image, create_pdf_image_from_jpeg_file, create_white_page_image,
+    get_image_dimensions, get_nombre_font_size_pt, px_to_mm, unique_output_path,
 };
 use crate::processor::image_loader::load_image;
 use crate::processor::jpeg::is_jpeg_file;
+use crate::processor::types::WorkInfo;
 
 /// 単ページPDF生成（画像サイズ = ページサイズ）
 pub fn generate_single_pdf(
@@ -24,6 +25,10 @@ pub fn generate_single_pdf(
     padding_mm: f32,
     add_nombre: bool,
     nombre_size: &str,
+    nombre_from_filename: bool,
+    add_white_page: bool,
+    print_work_info: bool,
+    work_info: Option<&WorkInfo>,
     dpi: f32,
 ) -> Result<String, String> {
     let input_path = Path::new(input_folder);
@@ -32,6 +37,13 @@ pub fn generate_single_pdf(
     if total == 0 {
         return Err("処理するファイルがありません".to_string());
     }
+
+    // ファイル名連動ノンブル: 各ファイルの変化部分の数字を採用
+    let page_numbers = if nombre_from_filename {
+        crate::processor::extract_page_numbers_from_filenames(files)
+    } else {
+        Vec::new()
+    };
 
     // 最初の画像でドキュメントを初期化
     let first_file = input_path.join(&files[0]);
@@ -57,6 +69,23 @@ pub fn generate_single_pdf(
         None
     };
     let nombre_font_size_pt = get_nombre_font_size_pt(nombre_size);
+
+    // 先頭白紙ページ（作品情報の印字対応）。page1 を白紙として使う
+    if add_white_page {
+        if let Some(white_img) = create_white_page_image(first_w, first_h, work_info, print_work_info)
+        {
+            let transform = ImageTransform {
+                translate_x: Some(Mm(padding_mm)),
+                translate_y: Some(Mm(padding_mm)),
+                scale_x: Some(1.0),
+                scale_y: Some(1.0),
+                dpi: Some(dpi),
+                ..Default::default()
+            };
+            white_img.add_to_layer(current_layer.clone(), transform);
+        }
+        // 白紙にはノンブルを振らない
+    }
 
     for (i, filename) in files.iter().enumerate() {
         // キャンセルチェック
@@ -125,8 +154,9 @@ pub fn generate_single_pdf(
         let page_width_with_padding = page_width_mm + padding_mm * 2.0;
         let page_height_with_padding = page_height_mm + padding_mm * 2.0;
 
-        // 2ページ目以降は新しいページを追加
-        if i > 0 {
+        // 2ページ目以降、または先頭白紙がある場合は新しいページを追加
+        // （白紙がある場合は page1 が白紙なので最初の実画像も新ページにする）
+        if i > 0 || add_white_page {
             let (page, layer) = doc.add_page(
                 Mm(page_width_with_padding),
                 Mm(page_height_with_padding),
@@ -148,10 +178,16 @@ pub fn generate_single_pdf(
 
         // ノンブル描画
         if let Some(ref font) = nombre_font {
-            let page_num = (i + 1).to_string();
+            let page_value = if nombre_from_filename {
+                page_numbers.get(i).copied().unwrap_or((i + 1) as u32)
+            } else {
+                (i + 1) as u32
+            };
+            let page_num = page_value.to_string();
             let text_x = page_width_with_padding / 2.0
                 - (page_num.len() as f32 * nombre_font_size_pt * 0.3 / 2.0);
-            let text_y = padding_mm / 2.0 - nombre_font_size_pt * 0.35 / 2.0;
+            // 余白の下端から約65%の高さに配置（従来は中央付近で下寄りすぎたため引き上げ）
+            let text_y = padding_mm * 0.65 - nombre_font_size_pt * 0.35 / 2.0;
             current_layer.use_text(&page_num, nombre_font_size_pt, Mm(text_x), Mm(text_y), font);
         }
     }

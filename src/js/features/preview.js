@@ -38,15 +38,36 @@ export function updateSinglePreview() {
         pageNum.textContent = startNum;
     }
 
+    // 先頭白紙ページの表示（作品情報ON時はラベルを切替）
+    const whitePageBox = $('singleWhitePageBox');
+    if (whitePageBox) {
+        const showWhitePage = $('singleWhitePage')?.checked || false;
+        const showWorkInfo = $('singleWorkInfo')?.checked || false;
+        whitePageBox.style.display = showWhitePage ? 'flex' : 'none';
+        const label = $('singleWhitePageLabel');
+        if (label) label.textContent = showWorkInfo ? '作品情報' : '白紙';
+    }
+
     // タチキリ塗りエリア
     const boxEl = $('singlePreviewBox');
     const fillEl = $('singlePreviewFill');
     const pageEl = $('singlePreviewPage');
 
-    // ボックスの背景（塗りがある時のみ表示）
+    // 余白（PDFの白マージン）
+    const paddingEnabled = $('singlePaddingEnabled')?.checked ?? false;
+    const padding = paddingEnabled ? (parseInt($('singlePaddingSlider')?.value) || 0) : 0;
+    const maxPadding = 300;
+    const previewMargin = padding === 0 ? 0 : Math.round(4 + (padding / maxPadding) * 18);
+
+    // ボックス = 用紙の余白（白）。余白0のときは塗りの有無で背景を切替
     if (boxEl) {
-        boxEl.style.background = hasFill ? 'var(--bg2)' : 'transparent';
-        boxEl.style.padding = hasFill ? '8px' : '0';
+        if (padding > 0) {
+            boxEl.style.background = '#d8d8de';
+            boxEl.style.padding = previewMargin + 'px';
+        } else {
+            boxEl.style.background = hasFill ? 'var(--bg2)' : 'transparent';
+            boxEl.style.padding = hasFill ? '8px' : '0';
+        }
     }
 
     if (fillEl && pageEl) {

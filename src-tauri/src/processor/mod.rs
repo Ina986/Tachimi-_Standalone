@@ -28,6 +28,84 @@ use std::path::Path;
 use jpeg::{encode_jpeg_mozjpeg, write_jpeg_mozjpeg_to_file};
 use pdf::{generate_single_pdf, generate_spread_pdf, DEFAULT_DPI};
 
+/// 文字列から最初の連続した数字列を u32 として取り出す
+fn parse_first_number(s: &str) -> Option<u32> {
+    let digits: String = s
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    if digits.is_empty() {
+        None
+    } else {
+        digits.parse::<u32>().ok()
+    }
+}
+
+/// ファイル名群から「各ファイルで変化する部分」の数字を取り出してノンブル番号にする。
+///
+/// 全ファイルに共通する先頭(prefix)・末尾(suffix)を取り除き、
+/// 残った中央部分（＝ファイルごとに変わる箇所）の数字を採用する。
+/// 中央部分に数字が無い場合はファイル名全体の最初の数字、
+/// それも無ければ index+1 にフォールバックする。
+pub fn extract_page_numbers_from_filenames(files: &[String]) -> Vec<u32> {
+    // ディレクトリ部分を除いたベース名（char配列）
+    let names: Vec<Vec<char>> = files
+        .iter()
+        .map(|f| {
+            let base = Path::new(f)
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| f.clone());
+            base.chars().collect()
+        })
+        .collect();
+
+    let n = names.len();
+    if n == 0 {
+        return Vec::new();
+    }
+
+    let min_len = names.iter().map(|x| x.len()).min().unwrap_or(0);
+
+    // 共通の先頭長
+    let mut prefix = 0;
+    while prefix < min_len {
+        let c = names[0][prefix];
+        if names.iter().all(|name| name[prefix] == c) {
+            prefix += 1;
+        } else {
+            break;
+        }
+    }
+
+    // 共通の末尾長（先頭と重ならない範囲で）
+    let mut suffix = 0;
+    let max_suffix = min_len.saturating_sub(prefix);
+    while suffix < max_suffix {
+        let c = names[0][names[0].len() - 1 - suffix];
+        if names.iter().all(|name| name[name.len() - 1 - suffix] == c) {
+            suffix += 1;
+        } else {
+            break;
+        }
+    }
+
+    names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            let start = prefix.min(name.len());
+            let end = name.len().saturating_sub(suffix).max(start);
+            let middle: String = name[start..end].iter().collect();
+            let whole: String = name.iter().collect();
+            parse_first_number(&middle)
+                .or_else(|| parse_first_number(&whole))
+                .unwrap_or((i + 1) as u32)
+        })
+        .collect()
+}
+
 /// 画像のプレビューを取得（Base64）
 pub fn get_image_preview(file_path: &str, max_size: u32) -> Result<ImageInfo, String> {
     let path = Path::new(file_path);
@@ -163,6 +241,7 @@ fn generate_pdf_inner(
             options.work_info.as_ref(),
             options.add_nombre,
             &options.nombre_size,
+            options.nombre_from_filename,
             image_dpi,
         )
     } else {
@@ -174,6 +253,10 @@ fn generate_pdf_inner(
             padding_mm,
             options.add_nombre,
             &options.nombre_size,
+            options.nombre_from_filename,
+            options.add_white_page,
+            options.print_work_info,
+            options.work_info.as_ref(),
             image_dpi,
         )
     }

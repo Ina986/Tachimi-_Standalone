@@ -415,6 +415,13 @@ pub fn draw_work_info_on_image(img: &mut RgbaImage, info: &WorkInfo) {
             .sum();
         let mut bottom_y = page_center_y - bottom_margin - bottom_total_height;
 
+        // タイトルブロック（巻数を含む）の下端と重ならないよう最低位置をクランプ。
+        // current_y はタイトルブロック描画後の y（＝ブロック下端）。
+        let min_author_top = current_y + base_size * 1.2;
+        if bottom_y < min_author_top {
+            bottom_y = min_author_top;
+        }
+
         for (lines, font_size, color) in &bottom_block {
             let scale = PxScale::from(*font_size);
             let scaled_font = font.as_scaled(scale);

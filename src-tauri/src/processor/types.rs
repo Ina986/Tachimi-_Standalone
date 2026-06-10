@@ -47,11 +47,19 @@ pub struct ProcessOptions {
     pub nombre_start_number: u32,
     #[serde(default = "default_nombre_size")]
     pub nombre_size: String, // "small", "medium", "large", "xlarge"
+    /// ファイル名内の数字をノンブルに使う（開始番号からの連番ではなく）
+    #[serde(default)]
+    pub nombre_from_filename: bool,
     /// リサイズ設定
     #[serde(default = "default_resize_mode")]
-    pub resize_mode: String, // "none", "percent", "fixed"
+    pub resize_mode: String, // "none", "percent", "custom", "fixed"
     #[serde(default = "default_resize_percent")]
     pub resize_percent: u32,
+    /// サイズ指定（手入力）モード用の収まり先サイズ（px）
+    #[serde(default = "default_resize_width")]
+    pub resize_width: u32,
+    #[serde(default = "default_resize_height")]
+    pub resize_height: u32,
     /// JPEG品質（0-100）。PDF用は100、通常JPEG出力は95
     #[serde(default = "default_jpeg_quality")]
     pub jpeg_quality: f32,
@@ -63,6 +71,8 @@ pub fn default_nombre_start() -> u32 { 1 }
 pub fn default_nombre_size() -> String { "medium".to_string() }
 pub fn default_resize_mode() -> String { "none".to_string() }
 pub fn default_resize_percent() -> u32 { 50 }
+pub fn default_resize_width() -> u32 { TARGET_RESIZE_WIDTH }
+pub fn default_resize_height() -> u32 { TARGET_RESIZE_HEIGHT }
 
 /// リサイズターゲットサイズ（元のTachimiと同じ）
 pub const TARGET_RESIZE_WIDTH: u32 = 2250;
@@ -140,6 +150,9 @@ pub struct PdfOptions {
     /// ノンブルサイズ
     #[serde(default = "default_nombre_size")]
     pub nombre_size: String,
+    /// ファイル名内の数字をノンブルに使う（連番ではなく）
+    #[serde(default)]
+    pub nombre_from_filename: bool,
 }
 
 /// 色文字列からRGBA値を取得（塗り用、不透明度指定可）

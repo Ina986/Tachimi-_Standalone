@@ -248,8 +248,11 @@ pub struct ProcessOptions {
     pub add_nombre: bool,
     pub nombre_start_number: u32,
     pub nombre_size: String,         // small/medium/large/xlarge
-    pub resize_mode: String,         // none/percent/fixed
+    pub nombre_from_filename: bool,  // ファイル名の数字をノンブルに使う
+    pub resize_mode: String,         // none/percent/custom/fixed
     pub resize_percent: u32,
+    pub resize_width: u32,           // custom時の収まり先幅(px)
+    pub resize_height: u32,          // custom時の収まり先高さ(px)
 }
 ```
 
@@ -268,8 +271,11 @@ pub struct PdfOptions {
     pub work_info: Option<WorkInfo>,
     pub add_nombre: bool,         // PDF余白にノンブルを追加
     pub nombre_size: String,      // small/medium/large/xlarge
+    pub nombre_from_filename: bool, // ファイル名の数字をノンブルに使う
 }
 ```
+
+> `add_white_page` / `print_work_info` / `work_info` は**見開き・単ページの両方**で有効（v1.2.24〜）。単ページは先頭に白紙ページ（作品情報の印字対応）を挿入する。
 
 ### ノンブルサイズ
 
@@ -525,3 +531,39 @@ C1. **未使用ヘルパーを削除**: `extract_psd_thumbnail`, `blend_pixels`,
 ### バージョン同期
 
 `src-tauri/Cargo.toml` / `src-tauri/Cargo.lock` / `src-tauri/tauri.conf.json` を **`1.2.22`** に更新。
+
+---
+
+## v1.2.24: 設定永続化の拡充・単ページ余白/白紙・ファイル名連動ノンブル・リサイズ手入力
+
+### A. 設定の永続化を拡充（[settings.js](src/js/features/settings.js)）
+
+A1. **塗りの不透明度・リサイズ設定を記憶**: `fillOpacity` / `resizeMode` / `resizePercent` / `resizeWidth` / `resizeHeight` を localStorage に保存・復元・リセット対応へ追加（従来は塗り色・保存先のみ永続化）。
+
+### B. 数値スライダーの操作性向上（[index.html](src/index.html), [output-panels.js](src/js/features/output-panels.js)）
+
+B1. **5刻み＋手入力**: ノド・余白・不透明度スライダーを `step=5` 化。値表示を直接入力できる number 欄に置換し、スライダーと双方向同期（`bindSliderValuePair`、`.slider-value-input`、min/maxクランプ）。
+
+### C. 単ページPDFの機能拡張
+
+C1. **余白（padding）スライダーを追加**（[single.rs](src-tauri/src/processor/pdf/single.rs) は元々padding対応、UI/受け渡しを追加）。`singlePaddingEnabled` / `singlePaddingSlider`。ノンブル有効時は最低120px確保。
+
+C2. **ノンブル位置を引き上げ**: 単ページのノンブルが下寄りすぎたため `text_y = padding_mm * 0.65 - …` に変更。
+
+C3. **先頭白紙＋作品情報に対応**: `singleWhitePage` / `singleWorkInfo` を追加。`generate_single_pdf` に `add_white_page` / `print_work_info` / `work_info` を追加し、先頭に白紙ページ（作品情報印字対応・`create_white_page_image`）を挿入。作品情報チェックは見開きと共通の `setupWorkInfoCheckbox`（JSON/手動ダイアログ → `appState.workInfoSource`）に集約。
+
+### D. ファイル名連動ノンブル（[mod.rs](src-tauri/src/processor/mod.rs), single/spread, [lib.rs](src-tauri/src/lib.rs)）
+
+D1. **「ファイル名の番号を使う」**: 各出力パネルにチェックを追加し `nombre_from_filename` を `PdfOptions` / `ProcessOptions` に追加。Rust `extract_page_numbers_from_filenames` が**全ファイル共通の先頭/末尾を除いた“変化部分”の数字**を採用（単一はファイル名全体、数字無しは連番にフォールバック）。単ページ・見開き・画像焼き込みすべてに適用。
+
+### E. リサイズ「サイズ指定（手入力）」モード（[image_processing.rs](src-tauri/src/processor/image_processing.rs)）
+
+E1. **`custom` モード追加**: 手入力の幅×高さに**アスペクト比を保って収める**（`fixed` と同じfitロジック）。`resize_width` / `resize_height` を `ProcessOptions` に追加。入力欄は見やすいよう幅を拡大。
+
+### F. 作品情報レイアウト修正（[common.rs](src-tauri/src/processor/pdf/common.rs)）
+
+F1. **巻数と著者の重なりを解消**: 著者ブロックの上端をタイトルブロック（巻数を含む）の下端より下にクランプ（`min_author_top = current_y + base_size*1.2`）。
+
+### バージョン同期
+
+`src-tauri/Cargo.toml` / `src-tauri/Cargo.lock` / `src-tauri/tauri.conf.json` を **`1.2.24`** に更新。

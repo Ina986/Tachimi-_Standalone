@@ -109,10 +109,13 @@ export function collectSettings() {
     let addNombre, nombreStartNumber, nombreSize;
     let addNombreToImage = true;
 
+    let nombreFromFilename = false;
+
     if (hasPdf) {
         addNombre = $('spreadAddNombre')?.checked ?? $('singleAddNombre')?.checked ?? true;
         nombreStartNumber = parseInt($('spreadNombreStart')?.value || $('singleNombreStart')?.value) || 1;
         nombreSize = $('spreadNombreSize')?.value || $('singleNombreSize')?.value || 'medium';
+        nombreFromFilename = $('spreadNombreFromFilename')?.checked ?? $('singleNombreFromFilename')?.checked ?? false;
 
         // PDF出力時に余白がある場合、ノンブルはPDF余白に追加するため画像処理では追加しない
         const hasPdfPadding = (appState.selectedOutputs.spreadPdf && outputSettings.spreadPadding > 0) ||
@@ -125,6 +128,7 @@ export function collectSettings() {
         addNombre = $('jpegAddNombre')?.checked ?? true;
         nombreStartNumber = parseInt($('jpegNombreStart')?.value) || 1;
         nombreSize = $('jpegNombreSize')?.value || 'medium';
+        nombreFromFilename = $('jpegNombreFromFilename')?.checked ?? false;
     }
 
     return {
@@ -138,10 +142,13 @@ export function collectSettings() {
         fillOpacity: parseInt($('fillOpacity').value) || 50,
         resizeMode: resize,
         resizePercent: parseInt($('resizePercent').value) || 50,
+        resizeWidth: parseInt($('resizeWidth')?.value) || 2250,
+        resizeHeight: parseInt($('resizeHeight')?.value) || 3000,
         addNombre,
         addNombreToImage,
         nombreStartNumber,
         nombreSize,
+        nombreFromFilename,
         saveJpeg: outputSettings.saveJpeg,
         savePdfSingle: outputSettings.savePdfSingle,
         savePdfSpread: outputSettings.savePdfSpread,
@@ -296,8 +303,11 @@ export async function execute() {
                 add_nombre: settings.addNombreToImage && settings.addNombre,
                 nombre_start_number: settings.nombreStartNumber || 1,
                 nombre_size: settings.nombreSize || 'medium',
+                nombre_from_filename: settings.nombreFromFilename || false,
                 resize_mode: settings.resizeMode || 'none',
                 resize_percent: settings.resizePercent || 50,
+                resize_width: settings.resizeWidth || 2250,
+                resize_height: settings.resizeHeight || 3000,
                 jpeg_quality: (tempFolderUsed || isHighRes) ? 100.0 : 95.0
             };
 
@@ -359,7 +369,14 @@ export async function execute() {
         // PDF生成用のオプションを構築
         const singleAddNombre = $('singleAddNombre')?.checked ?? false;
         const singleNombreSize = $('singleNombreSize')?.value || 'medium';
-        const singlePadding = singleAddNombre ? 50 : 0;
+        const singleNombreFromFilename = $('singleNombreFromFilename')?.checked || false;
+        // 単ページの余白（手動設定）。ノンブル有効時はノンブルが収まる最低余白を確保する
+        const singlePaddingEnabled = $('singlePaddingEnabled')?.checked ?? false;
+        let singlePadding = singlePaddingEnabled ? (parseInt($('singlePaddingSlider')?.value) || 0) : 0;
+        if (singleAddNombre && singlePadding < 120) singlePadding = 120;
+
+        const singleWhitePage = $('singleWhitePage')?.checked || false;
+        const singleWorkInfo = $('singleWorkInfo')?.checked || false;
 
         const singlePdfOptions = {
             preset: 'b5_single',
@@ -368,12 +385,17 @@ export async function execute() {
             gutter: 0,
             padding: singlePadding,
             is_spread: false,
+            add_white_page: singleWhitePage,
+            print_work_info: singleWorkInfo,
+            work_info: settings.workInfo || null,
             add_nombre: singleAddNombre,
-            nombre_size: singleNombreSize
+            nombre_size: singleNombreSize,
+            nombre_from_filename: singleNombreFromFilename
         };
 
         const spreadAddNombre = $('spreadAddNombre')?.checked ?? false;
         const spreadNombreSize = $('spreadNombreSize')?.value || 'medium';
+        const spreadNombreFromFilename = $('spreadNombreFromFilename')?.checked || false;
 
         const spreadPdfOptions = {
             preset: 'b5_spread',
@@ -386,7 +408,8 @@ export async function execute() {
             print_work_info: settings.printWorkInfo || false,
             work_info: settings.workInfo || null,
             add_nombre: spreadAddNombre,
-            nombre_size: spreadNombreSize
+            nombre_size: spreadNombreSize,
+            nombre_from_filename: spreadNombreFromFilename
         };
 
         // サブフォルダごとにPDFを分割するモード

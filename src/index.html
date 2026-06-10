@@ -164,7 +164,7 @@
                             </div>
                             <div id="fillOpacityRow" class="color-item" style="display:none;">
                                 <label>不透明度:</label>
-                                <input type="range" id="fillOpacity" min="0" max="100" value="50" class="opacity-slider-sm">
+                                <input type="range" id="fillOpacity" min="0" max="100" value="50" step="5" class="opacity-slider-sm">
                                 <span id="fillOpacityValue">50%</span>
                             </div>
                         </div>
@@ -177,11 +177,18 @@
                     <select id="resizeSelect" class="select-full">
                         <option value="none">なし</option>
                         <option value="percent">%指定</option>
+                        <option value="custom">サイズ指定（手入力）</option>
                         <option value="fixed" selected>デフォルト（2250×3000）</option>
                     </select>
                     <div id="percentSettings" class="inline-setting" style="display:none;">
                         <input type="number" id="resizePercent" value="50" min="1" max="100">
                         <span>%</span>
+                    </div>
+                    <div id="customSizeSettings" class="inline-setting" style="display:none;">
+                        <input type="number" id="resizeWidth" value="2250" min="1" max="20000">
+                        <span>×</span>
+                        <input type="number" id="resizeHeight" value="3000" min="1" max="20000">
+                        <span>px</span>
                     </div>
                 </section>
             </div>
@@ -257,15 +264,15 @@
                         <div class="toggle-slider-group">
                             <label class="checkbox-sm"><input type="checkbox" id="spreadGutterEnabled" checked><span>ノド</span></label>
                             <div class="slider-inline" id="spreadGutterSliderArea">
-                                <input type="range" id="spreadGutterSlider" min="0" max="150" value="70" class="slider-sm">
-                                <span class="slider-value" id="spreadGutterValue">70</span><span class="slider-unit">px</span>
+                                <input type="range" id="spreadGutterSlider" min="0" max="150" value="70" step="5" class="slider-sm">
+                                <input type="number" id="spreadGutterValue" class="slider-value-input" min="0" max="150" step="5" value="70"><span class="slider-unit">px</span>
                             </div>
                         </div>
                         <div class="toggle-slider-group">
                             <label class="checkbox-sm"><input type="checkbox" id="spreadPaddingEnabled" checked><span>余白</span></label>
                             <div class="slider-inline" id="spreadPaddingSliderArea">
-                                <input type="range" id="spreadPaddingSlider" min="0" max="300" value="150" class="slider-sm">
-                                <span class="slider-value" id="spreadPaddingValue">150</span><span class="slider-unit">px</span>
+                                <input type="range" id="spreadPaddingSlider" min="0" max="300" value="150" step="5" class="slider-sm">
+                                <input type="number" id="spreadPaddingValue" class="slider-value-input" min="0" max="300" step="5" value="150"><span class="slider-unit">px</span>
                             </div>
                         </div>
                     </div>
@@ -288,6 +295,7 @@
                                     <option value="xlarge">特大</option>
                                 </select>
                             </label>
+                            <label class="checkbox-sm nombre-fromfile"><input type="checkbox" id="spreadNombreFromFilename"><span>ファイル名の番号を使う</span></label>
                         </div>
                     </div>
                 </div>
@@ -298,6 +306,10 @@
                         <span class="panel-title">単ページPDF設定</span>
                     </div>
                     <div class="single-preview-area">
+                        <!-- 先頭白紙ページ（先頭白紙ON時に表示） -->
+                        <div class="single-whitepage-box" id="singleWhitePageBox" style="display:none;">
+                            <span class="single-whitepage-label" id="singleWhitePageLabel">白紙</span>
+                        </div>
                         <div class="single-preview-box" id="singlePreviewBox">
                             <!-- タチキリ塗りエリア -->
                             <div class="single-preview-fill" id="singlePreviewFill">
@@ -306,6 +318,21 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <!-- 余白設定 -->
+                    <div class="single-settings-row">
+                        <div class="toggle-slider-group">
+                            <label class="checkbox-sm"><input type="checkbox" id="singlePaddingEnabled" checked><span>余白</span></label>
+                            <div class="slider-inline" id="singlePaddingSliderArea">
+                                <input type="range" id="singlePaddingSlider" min="0" max="300" value="150" step="5" class="slider-sm">
+                                <input type="number" id="singlePaddingValue" class="slider-value-input" min="0" max="300" step="5" value="150"><span class="slider-unit">px</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ページ設定（先頭白紙・作品情報） -->
+                    <div class="single-options-row">
+                        <label class="checkbox-sm"><input type="checkbox" id="singleWhitePage"><span>先頭白紙</span></label>
+                        <label class="checkbox-sm"><input type="checkbox" id="singleWorkInfo"><span>作品情報</span></label>
                     </div>
                     <!-- ノンブル設定 -->
                     <div class="single-nombre-section">
@@ -320,8 +347,9 @@
                                     <option value="xlarge">特大</option>
                                 </select>
                             </label>
+                            <label class="checkbox-sm nombre-fromfile"><input type="checkbox" id="singleNombreFromFilename"><span>ファイル名の番号を使う</span></label>
                         </div>
-                        <div class="nombre-hint">※ 有効時はPDF下部に余白を追加</div>
+                        <div class="nombre-hint">※ ノンブルは余白内に配置（余白0のときは自動で余白を確保）</div>
                     </div>
                 </div>
 
@@ -354,6 +382,7 @@
                                     <option value="xlarge">特大</option>
                                 </select>
                             </label>
+                            <label class="checkbox-sm nombre-fromfile"><input type="checkbox" id="jpegNombreFromFilename"><span>ファイル名の番号を使う</span></label>
                         </div>
                         <div class="nombre-hint">※ 画像下部に追加（タチキリ領域内）</div>
                     </div>
@@ -765,7 +794,7 @@
                     </div>
                     <div class="crop-color-item" id="cropModeOpacityRow" style="display:none;">
                         <label>不透明度:</label>
-                        <input type="range" id="fillOpacityFull" min="0" max="100" value="50" class="opacity-slider-sm">
+                        <input type="range" id="fillOpacityFull" min="0" max="100" value="50" step="5" class="opacity-slider-sm">
                         <span id="fillOpacityValueFull">50%</span>
                     </div>
                 </div>

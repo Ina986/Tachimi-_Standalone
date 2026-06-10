@@ -11,6 +11,100 @@ import { jsonSelectModal } from './json-modal.js';
 import { saveSettings } from './settings.js';
 
 /**
+ * range スライダーと数値手入力欄を双方向バインドする
+ * - スライダー操作 → 手入力欄へ反映
+ * - 手入力欄の入力 → スライダーへ反映（min/max でクランプ）
+ * @param {string} sliderId  range要素のID
+ * @param {string} inputId   number入力欄のID
+ * @param {Function} onChange 値が変わったときに呼ぶコールバック（プレビュー更新等）
+ */
+export function bindSliderValuePair(sliderId, inputId, onChange) {
+    const slider = $(sliderId);
+    const input = $(inputId);
+    if (!slider) return;
+
+    const clamp = (v) => {
+        const min = parseInt(slider.min) || 0;
+        const max = slider.max !== '' ? parseInt(slider.max) : Infinity;
+        if (isNaN(v)) v = min;
+        return Math.min(max, Math.max(min, v));
+    };
+
+    // スライダー → 手入力欄
+    slider.addEventListener('input', () => {
+        if (input) input.value = slider.value;
+        if (onChange) onChange();
+    });
+
+    // 手入力欄 → スライダー
+    if (input) {
+        const apply = () => {
+            const v = clamp(parseInt(input.value, 10));
+            input.value = v;
+            slider.value = v;
+            if (onChange) onChange();
+        };
+        input.addEventListener('input', apply);
+        input.addEventListener('change', apply);
+    }
+}
+
+/**
+ * 全プレビューの作品情報・白紙表示を更新
+ */
+function refreshWorkInfoPreviews() {
+    if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
+    if (typeof window.updateSinglePreview === 'function') window.updateSinglePreview();
+}
+
+/**
+ * 「作品情報」チェックボックスの共通セットアップ（見開き・単ページ共用）
+ * チェック時に JSON / 手動入力の選択ダイアログを出し、作品情報を appState に保存する。
+ * 作品情報データ自体は出力形式をまたいで共有される（appState.workInfoSource）。
+ * @param {HTMLInputElement|null} checkbox
+ */
+function setupWorkInfoCheckbox(checkbox) {
+    if (!checkbox) return;
+    checkbox.addEventListener('change', async () => {
+        if (checkbox.checked) {
+            const choice = await showWorkInfoChoiceDialog();
+
+            if (choice === 'json') {
+                // 一旦OFFにしてJSON選択後にON
+                checkbox.checked = false;
+                const prevCallback = jsonSelectModal.onFileSelected;
+                jsonSelectModal.onFileSelected = (filePath, data) => {
+                    jsonSelectModal.onFileSelected = prevCallback;
+                    jsonSelectModal.hide();
+                    appState.jsonData = data;
+                    appState.workInfoSource = 'json';
+                    checkbox.checked = true;
+                    refreshWorkInfoPreviews();
+                };
+                jsonSelectModal.show();
+            } else if (choice === 'manual') {
+                const manualData = await showManualWorkInfoModal();
+                if (manualData) {
+                    appState.manualWorkInfo = manualData;
+                    appState.workInfoSource = 'manual';
+                } else {
+                    checkbox.checked = false;
+                }
+            } else {
+                checkbox.checked = false;
+            }
+        } else {
+            // 見開き・単ページ両方の作品情報がOFFになったときだけソースをクリア
+            const spreadWi = $('spreadWorkInfo');
+            const singleWi = $('singleWorkInfo');
+            const otherChecked = (checkbox === spreadWi ? singleWi : spreadWi)?.checked;
+            if (!otherChecked) appState.workInfoSource = null;
+        }
+        refreshWorkInfoPreviews();
+    });
+}
+
+/**
  * 出力形式カードの初期化（複数選択対応）
  */
 export function setupPresetCards() {
@@ -142,23 +236,15 @@ function setupSpreadPdfEvents() {
         });
     }
 
-    // ノドスライダー
-    const gutterSlider = $('spreadGutterSlider');
-    if (gutterSlider) {
-        gutterSlider.addEventListener('input', () => {
-            $('spreadGutterValue').textContent = gutterSlider.value;
-            if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
-        });
-    }
+    // ノドスライダー（スライダー⇔手入力欄を双方向バインド）
+    bindSliderValuePair('spreadGutterSlider', 'spreadGutterValue', () => {
+        if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
+    });
 
-    // 余白スライダー
-    const paddingSlider = $('spreadPaddingSlider');
-    if (paddingSlider) {
-        paddingSlider.addEventListener('input', () => {
-            $('spreadPaddingValue').textContent = paddingSlider.value;
-            if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
-        });
-    }
+    // 余白スライダー（スライダー⇔手入力欄を双方向バインド）
+    bindSliderValuePair('spreadPaddingSlider', 'spreadPaddingValue', () => {
+        if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
+    });
 
     // 先頭白紙追加チェック
     const whitePage = $('spreadWhitePage');
@@ -169,42 +255,7 @@ function setupSpreadPdfEvents() {
     }
 
     // 作品情報印字チェック
-    const workInfo = $('spreadWorkInfo');
-    if (workInfo) {
-        workInfo.addEventListener('change', async () => {
-            if (workInfo.checked) {
-                const choice = await showWorkInfoChoiceDialog();
-
-                if (choice === 'json') {
-                    // 一旦OFFにしてJSON選択後にON
-                    workInfo.checked = false;
-                    const prevCallback = jsonSelectModal.onFileSelected;
-                    jsonSelectModal.onFileSelected = (filePath, data) => {
-                        jsonSelectModal.onFileSelected = prevCallback;
-                        jsonSelectModal.hide();
-                        appState.jsonData = data;
-                        appState.workInfoSource = 'json';
-                        workInfo.checked = true;
-                        if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
-                    };
-                    jsonSelectModal.show();
-                } else if (choice === 'manual') {
-                    const manualData = await showManualWorkInfoModal();
-                    if (manualData) {
-                        appState.manualWorkInfo = manualData;
-                        appState.workInfoSource = 'manual';
-                    } else {
-                        workInfo.checked = false;
-                    }
-                } else {
-                    workInfo.checked = false;
-                }
-            } else {
-                appState.workInfoSource = null;
-            }
-            if (typeof window.updateSpreadPreview === 'function') window.updateSpreadPreview();
-        });
-    }
+    setupWorkInfoCheckbox($('spreadWorkInfo'));
 
     // ノンブル追加チェック
     const addNombre = $('spreadAddNombre');
@@ -239,6 +290,12 @@ function setupSpreadPdfEvents() {
         });
     }
 
+    // ファイル名の番号を使うチェック
+    const fromFile = $('spreadNombreFromFilename');
+    if (fromFile) {
+        fromFile.addEventListener('change', () => syncNombreSettings('spread'));
+    }
+
     // 初期状態でノンブルヒントを設定
     updateSpreadNombreHint();
 }
@@ -247,6 +304,32 @@ function setupSpreadPdfEvents() {
  * 単ページPDF設定のイベント初期化
  */
 function setupSinglePdfEvents() {
+    // 余白有効/無効トグル
+    const paddingEnabled = $('singlePaddingEnabled');
+    const paddingSliderArea = $('singlePaddingSliderArea');
+    if (paddingEnabled && paddingSliderArea) {
+        paddingEnabled.addEventListener('change', () => {
+            paddingSliderArea.classList.toggle('disabled', !paddingEnabled.checked);
+            if (typeof window.updateSinglePreview === 'function') window.updateSinglePreview();
+        });
+    }
+
+    // 余白スライダー（スライダー⇔手入力欄を双方向バインド）
+    bindSliderValuePair('singlePaddingSlider', 'singlePaddingValue', () => {
+        if (typeof window.updateSinglePreview === 'function') window.updateSinglePreview();
+    });
+
+    // 先頭白紙チェック
+    const whitePage = $('singleWhitePage');
+    if (whitePage) {
+        whitePage.addEventListener('change', () => {
+            if (typeof window.updateSinglePreview === 'function') window.updateSinglePreview();
+        });
+    }
+
+    // 作品情報チェック（見開きと共通処理）
+    setupWorkInfoCheckbox($('singleWorkInfo'));
+
     // ノンブル追加チェック
     const addNombre = $('singleAddNombre');
     if (addNombre) {
@@ -259,6 +342,12 @@ function setupSinglePdfEvents() {
             // 他のパネルのノンブル設定も同期
             syncNombreSettings('single');
         });
+    }
+
+    // ファイル名の番号を使うチェック
+    const fromFile = $('singleNombreFromFilename');
+    if (fromFile) {
+        fromFile.addEventListener('change', () => syncNombreSettings('single'));
     }
 
     // ノンブル開始番号
@@ -314,6 +403,12 @@ function setupJpegEvents() {
         nombreSize.addEventListener('change', () => {
             syncNombreSettings('jpeg');
         });
+    }
+
+    // ファイル名の番号を使うチェック
+    const fromFile = $('jpegNombreFromFilename');
+    if (fromFile) {
+        fromFile.addEventListener('change', () => syncNombreSettings('jpeg'));
     }
 }
 
@@ -413,20 +508,24 @@ export function syncNombreSettings(source) {
     let isChecked = false;
     let startValue = '1';
     let sizeValue = 'medium';
+    let fromFile = false;
 
     // ソースから値を取得
     if (source === 'spread' && spreadCheck) {
         isChecked = spreadCheck.checked;
         startValue = $('spreadNombreStart')?.value || '1';
         sizeValue = $('spreadNombreSize')?.value || 'medium';
+        fromFile = $('spreadNombreFromFilename')?.checked || false;
     } else if (source === 'single' && singleCheck) {
         isChecked = singleCheck.checked;
         startValue = $('singleNombreStart')?.value || '1';
         sizeValue = $('singleNombreSize')?.value || 'medium';
+        fromFile = $('singleNombreFromFilename')?.checked || false;
     } else if (source === 'jpeg' && jpegCheck) {
         isChecked = jpegCheck.checked;
         startValue = $('jpegNombreStart')?.value || '1';
         sizeValue = $('jpegNombreSize')?.value || 'medium';
+        fromFile = $('jpegNombreFromFilename')?.checked || false;
     }
 
     // 他のパネルに同期
@@ -434,6 +533,7 @@ export function syncNombreSettings(source) {
         spreadCheck.checked = isChecked;
         if ($('spreadNombreStart')) $('spreadNombreStart').value = startValue;
         if ($('spreadNombreSize')) $('spreadNombreSize').value = sizeValue;
+        if ($('spreadNombreFromFilename')) $('spreadNombreFromFilename').checked = fromFile;
         if ($('spreadNombreSettings')) {
             $('spreadNombreSettings').style.display = isChecked ? 'flex' : 'none';
         }
@@ -442,6 +542,7 @@ export function syncNombreSettings(source) {
         singleCheck.checked = isChecked;
         if ($('singleNombreStart')) $('singleNombreStart').value = startValue;
         if ($('singleNombreSize')) $('singleNombreSize').value = sizeValue;
+        if ($('singleNombreFromFilename')) $('singleNombreFromFilename').checked = fromFile;
         if ($('singleNombreSettings')) {
             $('singleNombreSettings').style.display = isChecked ? 'flex' : 'none';
         }
@@ -450,6 +551,7 @@ export function syncNombreSettings(source) {
         jpegCheck.checked = isChecked;
         if ($('jpegNombreStart')) $('jpegNombreStart').value = startValue;
         if ($('jpegNombreSize')) $('jpegNombreSize').value = sizeValue;
+        if ($('jpegNombreFromFilename')) $('jpegNombreFromFilename').checked = fromFile;
         if ($('jpegNombreSettings')) {
             $('jpegNombreSettings').style.display = isChecked ? 'flex' : 'none';
         }
@@ -518,8 +620,10 @@ export function setupOutputPanelEvents() {
 
     // リサイズ設定表示切替（ドロップダウン）
     $('resizeSelect').onchange = () => {
-        $('percentSettings').style.display =
-            $('resizeSelect').value === 'percent' ? 'flex' : 'none';
+        const mode = $('resizeSelect').value;
+        $('percentSettings').style.display = mode === 'percent' ? 'flex' : 'none';
+        const customEl = $('customSizeSettings');
+        if (customEl) customEl.style.display = mode === 'custom' ? 'flex' : 'none';
     };
 
     // カード初期化

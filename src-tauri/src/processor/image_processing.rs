@@ -147,6 +147,16 @@ fn apply_resize(img: DynamicImage, options: &ProcessOptions) -> DynamicImage {
             let new_height = (h as f32 * scale).round() as u32;
             img.resize_exact(new_width, new_height, FilterType::CatmullRom)
         }
+        "custom" => {
+            // 手入力サイズに収める（アスペクト比維持・fixedと同じfitロジック）
+            let target_w = options.resize_width.max(1);
+            let target_h = options.resize_height.max(1);
+            let (w, h) = img.dimensions();
+            let scale = (target_w as f32 / w as f32).min(target_h as f32 / h as f32);
+            let new_width = (w as f32 * scale).round().max(1.0) as u32;
+            let new_height = (h as f32 * scale).round().max(1.0) as u32;
+            img.resize_exact(new_width, new_height, FilterType::CatmullRom)
+        }
         _ => img,
     }
 }

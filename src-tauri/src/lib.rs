@@ -425,6 +425,13 @@ async fn process_images(
     let in_progress = AtomicUsize::new(0); // 現在処理中のファイル数
     let errors: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
+    // ファイル名連動ノンブル用の番号テーブル（有効時のみ計算）
+    let filename_page_numbers = if options.nombre_from_filename {
+        processor::extract_page_numbers_from_filenames(&files)
+    } else {
+        Vec::new()
+    };
+
     // rayon並列処理で複数ファイルを同時処理
     // enumerate()でインデックスを取得してノンブル用のページ番号に使用
     files.par_iter().enumerate().for_each(|(index, filename)| {
@@ -466,8 +473,15 @@ async fn process_images(
             }
         }
 
-        // ページ番号 = 開始番号 + インデックス
-        let page_number = options.nombre_start_number + index as u32;
+        // ページ番号 = ファイル名連動なら抽出番号、そうでなければ 開始番号 + インデックス
+        let page_number = if options.nombre_from_filename {
+            filename_page_numbers
+                .get(index)
+                .copied()
+                .unwrap_or(options.nombre_start_number + index as u32)
+        } else {
+            options.nombre_start_number + index as u32
+        };
 
         // 画像処理を実行
         let result =

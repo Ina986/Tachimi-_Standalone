@@ -22,6 +22,13 @@ export function saveSettings() {
             tachikiriType: $('tachikiriSelect')?.value || 'fill_white',
             fillColor: $('fillColor')?.value || 'white',
             strokeColor: $('strokeColor')?.value || 'black',
+            fillOpacity: parseInt($('fillOpacity')?.value) || 50,
+
+            // リサイズ設定
+            resizeMode: $('resizeSelect')?.value || 'fixed',
+            resizePercent: parseInt($('resizePercent')?.value) || 50,
+            resizeWidth: parseInt($('resizeWidth')?.value) || 2250,
+            resizeHeight: parseInt($('resizeHeight')?.value) || 3000,
 
             // 見開きPDF設定
             spreadGutterEnabled: $('spreadGutterEnabled')?.checked ?? true,
@@ -33,11 +40,17 @@ export function saveSettings() {
             spreadAddNombre: $('spreadAddNombre')?.checked ?? true,
             spreadNombreStart: parseInt($('spreadNombreStart')?.value) || 1,
             spreadNombreSize: $('spreadNombreSize')?.value || 'small',
+            spreadNombreFromFilename: $('spreadNombreFromFilename')?.checked ?? false,
 
             // 単ページPDF設定
+            singlePaddingEnabled: $('singlePaddingEnabled')?.checked ?? true,
+            singlePaddingValue: parseInt($('singlePaddingSlider')?.value) || 150,
+            singleWhitePage: $('singleWhitePage')?.checked ?? false,
+            singleWorkInfo: $('singleWorkInfo')?.checked ?? false,
             singleAddNombre: $('singleAddNombre')?.checked ?? true,
             singleNombreStart: parseInt($('singleNombreStart')?.value) || 1,
             singleNombreSize: $('singleNombreSize')?.value || 'small',
+            singleNombreFromFilename: $('singleNombreFromFilename')?.checked ?? false,
 
             // PDF分割
             splitPdfBySubfolder: appState.splitPdfBySubfolder,
@@ -46,6 +59,7 @@ export function saveSettings() {
             jpegAddNombre: $('jpegAddNombre')?.checked ?? false,
             jpegNombreStart: parseInt($('jpegNombreStart')?.value) || 1,
             jpegNombreSize: $('jpegNombreSize')?.value || 'small',
+            jpegNombreFromFilename: $('jpegNombreFromFilename')?.checked ?? false,
             jpegQuality: parseInt($('jpegQuality')?.value) || 92,
 
             // 保存日時
@@ -125,6 +139,43 @@ export function loadSettings() {
             const el = $('strokeColor');
             if (el) el.value = settings.strokeColor;
         }
+        // 塗りの不透明度（濃さ）
+        if (settings.fillOpacity !== undefined) {
+            const el = $('fillOpacity');
+            if (el) {
+                el.value = settings.fillOpacity;
+                const valueEl = $('fillOpacityValue');
+                if (valueEl) valueEl.textContent = settings.fillOpacity + '%';
+            }
+        }
+
+        // リサイズ設定
+        if (settings.resizeMode) {
+            const el = $('resizeSelect');
+            if (el) {
+                el.value = settings.resizeMode;
+                const percentSettings = $('percentSettings');
+                if (percentSettings) {
+                    percentSettings.style.display = settings.resizeMode === 'percent' ? 'flex' : 'none';
+                }
+                const customSettings = $('customSizeSettings');
+                if (customSettings) {
+                    customSettings.style.display = settings.resizeMode === 'custom' ? 'flex' : 'none';
+                }
+            }
+        }
+        if (settings.resizePercent !== undefined) {
+            const el = $('resizePercent');
+            if (el) el.value = settings.resizePercent;
+        }
+        if (settings.resizeWidth !== undefined) {
+            const el = $('resizeWidth');
+            if (el) el.value = settings.resizeWidth;
+        }
+        if (settings.resizeHeight !== undefined) {
+            const el = $('resizeHeight');
+            if (el) el.value = settings.resizeHeight;
+        }
 
         // 見開きPDF設定
         const spreadGutterEnabled = $('spreadGutterEnabled');
@@ -137,7 +188,7 @@ export function loadSettings() {
             if (slider) {
                 slider.value = settings.spreadGutterValue;
                 const valueEl = $('spreadGutterValue');
-                if (valueEl) valueEl.textContent = settings.spreadGutterValue;
+                if (valueEl) valueEl.value = settings.spreadGutterValue;
             }
         }
         const spreadPaddingEnabled = $('spreadPaddingEnabled');
@@ -150,7 +201,7 @@ export function loadSettings() {
             if (slider) {
                 slider.value = settings.spreadPaddingValue;
                 const valueEl = $('spreadPaddingValue');
-                if (valueEl) valueEl.textContent = settings.spreadPaddingValue;
+                if (valueEl) valueEl.value = settings.spreadPaddingValue;
             }
         }
         if (settings.spreadWhitePage !== undefined) {
@@ -177,8 +228,35 @@ export function loadSettings() {
             const el = $('spreadNombreSize');
             if (el) el.value = settings.spreadNombreSize;
         }
+        if (settings.spreadNombreFromFilename !== undefined) {
+            const el = $('spreadNombreFromFilename');
+            if (el) el.checked = settings.spreadNombreFromFilename;
+        }
 
         // 単ページPDF設定
+        if (settings.singlePaddingEnabled !== undefined) {
+            const el = $('singlePaddingEnabled');
+            if (el) {
+                el.checked = settings.singlePaddingEnabled;
+                $('singlePaddingSliderArea')?.classList.toggle('disabled', !settings.singlePaddingEnabled);
+            }
+        }
+        if (settings.singlePaddingValue !== undefined) {
+            const slider = $('singlePaddingSlider');
+            if (slider) {
+                slider.value = settings.singlePaddingValue;
+                const valueEl = $('singlePaddingValue');
+                if (valueEl) valueEl.value = settings.singlePaddingValue;
+            }
+        }
+        if (settings.singleWhitePage !== undefined) {
+            const el = $('singleWhitePage');
+            if (el) el.checked = settings.singleWhitePage;
+        }
+        if (settings.singleWorkInfo !== undefined) {
+            const el = $('singleWorkInfo');
+            if (el) el.checked = settings.singleWorkInfo;
+        }
         if (settings.singleAddNombre !== undefined) {
             const el = $('singleAddNombre');
             if (el) {
@@ -194,6 +272,10 @@ export function loadSettings() {
         if (settings.singleNombreSize) {
             const el = $('singleNombreSize');
             if (el) el.value = settings.singleNombreSize;
+        }
+        if (settings.singleNombreFromFilename !== undefined) {
+            const el = $('singleNombreFromFilename');
+            if (el) el.checked = settings.singleNombreFromFilename;
         }
 
         // JPEG設定
@@ -212,6 +294,10 @@ export function loadSettings() {
         if (settings.jpegNombreSize) {
             const el = $('jpegNombreSize');
             if (el) el.value = settings.jpegNombreSize;
+        }
+        if (settings.jpegNombreFromFilename !== undefined) {
+            const el = $('jpegNombreFromFilename');
+            if (el) el.checked = settings.jpegNombreFromFilename;
         }
         if (settings.jpegQuality !== undefined) {
             const slider = $('jpegQuality');
@@ -242,14 +328,20 @@ export function setupSettingsAutoSave() {
     const watchIds = [
         // サブフォルダ
         // タチキリ
-        'tachikiriSelect', 'fillColor', 'strokeColor',
+        'tachikiriSelect', 'fillColor', 'strokeColor', 'fillOpacity',
+        // リサイズ
+        'resizeSelect', 'resizePercent', 'resizeWidth', 'resizeHeight',
         // 見開きPDF
-        'spreadGutterEnabled', 'spreadGutterSlider', 'spreadPaddingEnabled', 'spreadPaddingSlider',
+        'spreadGutterEnabled', 'spreadGutterSlider', 'spreadGutterValue',
+        'spreadPaddingEnabled', 'spreadPaddingSlider', 'spreadPaddingValue',
         'spreadWhitePage', 'spreadWorkInfo', 'spreadAddNombre', 'spreadNombreStart', 'spreadNombreSize',
+        'spreadNombreFromFilename',
         // 単ページPDF
-        'singleAddNombre', 'singleNombreStart', 'singleNombreSize',
+        'singlePaddingEnabled', 'singlePaddingSlider', 'singlePaddingValue',
+        'singleWhitePage', 'singleWorkInfo',
+        'singleAddNombre', 'singleNombreStart', 'singleNombreSize', 'singleNombreFromFilename',
         // JPEG
-        'jpegAddNombre', 'jpegNombreStart', 'jpegNombreSize', 'jpegQuality'
+        'jpegAddNombre', 'jpegNombreStart', 'jpegNombreSize', 'jpegNombreFromFilename', 'jpegQuality'
     ];
 
     watchIds.forEach(id => {
@@ -361,6 +453,12 @@ export function doResetSettings() {
         tachikiriType: 'fill_white',
         fillColor: 'black',
         strokeColor: 'black',
+        fillOpacity: 50,
+        // リサイズ
+        resizeMode: 'fixed',
+        resizePercent: 50,
+        resizeWidth: 2250,
+        resizeHeight: 3000,
         // 見開きPDF
         spreadGutterEnabled: true,
         spreadGutterValue: 70,
@@ -371,14 +469,21 @@ export function doResetSettings() {
         spreadAddNombre: true,
         spreadNombreStart: 1,
         spreadNombreSize: 'small',
+        spreadNombreFromFilename: false,
         // 単ページPDF
+        singlePaddingEnabled: true,
+        singlePaddingValue: 150,
+        singleWhitePage: false,
+        singleWorkInfo: false,
         singleAddNombre: true,
         singleNombreStart: 1,
         singleNombreSize: 'small',
+        singleNombreFromFilename: false,
         // JPEG
         jpegAddNombre: false,
         jpegNombreStart: 1,
         jpegNombreSize: 'small',
+        jpegNombreFromFilename: false,
         jpegQuality: 92
     };
 
@@ -390,6 +495,24 @@ export function doResetSettings() {
     });
     if ($('fillColor')) $('fillColor').value = defaults.fillColor;
     if ($('strokeColor')) $('strokeColor').value = defaults.strokeColor;
+    if ($('fillOpacity')) {
+        $('fillOpacity').value = defaults.fillOpacity;
+        if ($('fillOpacityValue')) $('fillOpacityValue').textContent = defaults.fillOpacity + '%';
+    }
+
+    // リサイズ
+    if ($('resizeSelect')) {
+        $('resizeSelect').value = defaults.resizeMode;
+        if ($('percentSettings')) {
+            $('percentSettings').style.display = defaults.resizeMode === 'percent' ? 'flex' : 'none';
+        }
+        if ($('customSizeSettings')) {
+            $('customSizeSettings').style.display = defaults.resizeMode === 'custom' ? 'flex' : 'none';
+        }
+    }
+    if ($('resizePercent')) $('resizePercent').value = defaults.resizePercent;
+    if ($('resizeWidth')) $('resizeWidth').value = defaults.resizeWidth;
+    if ($('resizeHeight')) $('resizeHeight').value = defaults.resizeHeight;
 
     // 見開きPDF
     const spreadGutterEnabled = $('spreadGutterEnabled');
@@ -400,7 +523,7 @@ export function doResetSettings() {
     const spreadGutterSlider = $('spreadGutterSlider');
     if (spreadGutterSlider) {
         spreadGutterSlider.value = defaults.spreadGutterValue;
-        if ($('spreadGutterValue')) $('spreadGutterValue').textContent = defaults.spreadGutterValue;
+        if ($('spreadGutterValue')) $('spreadGutterValue').value = defaults.spreadGutterValue;
     }
     const spreadPaddingEnabled = $('spreadPaddingEnabled');
     if (spreadPaddingEnabled) {
@@ -410,7 +533,7 @@ export function doResetSettings() {
     const spreadPaddingSlider = $('spreadPaddingSlider');
     if (spreadPaddingSlider) {
         spreadPaddingSlider.value = defaults.spreadPaddingValue;
-        if ($('spreadPaddingValue')) $('spreadPaddingValue').textContent = defaults.spreadPaddingValue;
+        if ($('spreadPaddingValue')) $('spreadPaddingValue').value = defaults.spreadPaddingValue;
     }
     if ($('spreadWhitePage')) $('spreadWhitePage').checked = defaults.spreadWhitePage;
     if ($('spreadWorkInfo')) $('spreadWorkInfo').checked = defaults.spreadWorkInfo;
@@ -424,8 +547,21 @@ export function doResetSettings() {
     }
     if ($('spreadNombreStart')) $('spreadNombreStart').value = defaults.spreadNombreStart;
     if ($('spreadNombreSize')) $('spreadNombreSize').value = defaults.spreadNombreSize;
+    if ($('spreadNombreFromFilename')) $('spreadNombreFromFilename').checked = defaults.spreadNombreFromFilename;
 
     // 単ページPDF
+    const singlePaddingEnabled = $('singlePaddingEnabled');
+    if (singlePaddingEnabled) {
+        singlePaddingEnabled.checked = defaults.singlePaddingEnabled;
+        $('singlePaddingSliderArea')?.classList.toggle('disabled', !defaults.singlePaddingEnabled);
+    }
+    const singlePaddingSlider = $('singlePaddingSlider');
+    if (singlePaddingSlider) {
+        singlePaddingSlider.value = defaults.singlePaddingValue;
+        if ($('singlePaddingValue')) $('singlePaddingValue').value = defaults.singlePaddingValue;
+    }
+    if ($('singleWhitePage')) $('singleWhitePage').checked = defaults.singleWhitePage;
+    if ($('singleWorkInfo')) $('singleWorkInfo').checked = defaults.singleWorkInfo;
     const singleAddNombre = $('singleAddNombre');
     if (singleAddNombre) {
         singleAddNombre.checked = defaults.singleAddNombre;
@@ -434,6 +570,7 @@ export function doResetSettings() {
     }
     if ($('singleNombreStart')) $('singleNombreStart').value = defaults.singleNombreStart;
     if ($('singleNombreSize')) $('singleNombreSize').value = defaults.singleNombreSize;
+    if ($('singleNombreFromFilename')) $('singleNombreFromFilename').checked = defaults.singleNombreFromFilename;
 
     // JPEG
     const jpegAddNombre = $('jpegAddNombre');
@@ -444,6 +581,7 @@ export function doResetSettings() {
     }
     if ($('jpegNombreStart')) $('jpegNombreStart').value = defaults.jpegNombreStart;
     if ($('jpegNombreSize')) $('jpegNombreSize').value = defaults.jpegNombreSize;
+    if ($('jpegNombreFromFilename')) $('jpegNombreFromFilename').checked = defaults.jpegNombreFromFilename;
     const jpegQualitySlider = $('jpegQuality');
     if (jpegQualitySlider) {
         jpegQualitySlider.value = defaults.jpegQuality;
