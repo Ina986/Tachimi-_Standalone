@@ -1,4 +1,17 @@
 mod processor;
+mod security;
+mod psd_safety;
+mod updater_local;
+
+/// デバッグ専用ログ。release では出力しない（本番でのパス露出・ログ漏れ防止）。
+/// 起動時診断 [seal] は意図的に eprintln を残す（診断用）。
+#[macro_export]
+macro_rules! dlog {
+    ($($arg:tt)*) => {{
+        #[cfg(debug_assertions)] eprintln!($($arg)*);
+        #[cfg(not(debug_assertions))] { let _ = format_args!($($arg)*); }
+    }};
+}
 
 use processor::{
     FileEntry, ImageInfo, PreviewFileInfo, ProcessOptions, ProcessResult, WorkInfo, WorkInfoPreview,
@@ -10,6 +23,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
+use tauri_plugin_dialog::DialogExt;
 
 #[derive(Debug, Deserialize)]
 struct PdfJobBatch {
@@ -71,6 +85,21 @@ fn run_pdf_job_file(job_path: String) -> bool {
         let mut results = Vec::with_capacity(batch.jobs.len());
         for job in batch.jobs {
             let output_path = job.output_path.clone();
+            // 連携元（CLI由来）パスを許可リスト検証してから処理（保護パスは拒否）
+            let _ = security::grant_user_path(&job.input_folder);
+            if let Some(parent) = std::path::Path::new(&job.output_path).parent() {
+                let _ = security::grant_user_path(parent);
+            }
+            if security::ensure_directory_read_path(&job.input_folder).is_err()
+                || security::ensure_write_path(&job.output_path).is_err()
+            {
+                results.push(PdfJobItemResult {
+                    output_path,
+                    success: false,
+                    error: Some("forbidden path".to_string()),
+                });
+                continue;
+            }
             let item = match processor::generate_pdf_headless(
                 &job.input_folder,
                 &job.output_path,
@@ -173,11 +202,12 @@ static CLI_FILES: Mutex<Option<Vec<String>>> = Mutex::new(None);
 /// CLI引数 または トリガーファイルからファイルパスを取得（フロントエンド初期化後に呼ばれる）
 #[tauri::command]
 async fn get_cli_files() -> Option<Vec<String>> {
-    // 1. まずCLI引数から（setup()で保存済み）
+    // 1. まずCLI引数から（setup()で保存済み・grant済み）
     if let Some(paths) = CLI_FILES.lock().unwrap().take() {
+        let _ = security::grant_user_paths(&paths);
         return Some(paths);
     }
-    // 2. トリガーファイルから（COMIC-Bridge等が書き出したJSON）
+    // 2. トリガーファイルから（連携アプリが書き出したJSON）
     let trigger_path = std::env::temp_dir().join("tachimi_cli_files.json");
     if trigger_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&trigger_path) {
@@ -185,6 +215,8 @@ async fn get_cli_files() -> Option<Vec<String>> {
             let _ = std::fs::remove_file(&trigger_path);
             if let Ok(paths) = serde_json::from_str::<Vec<String>>(&content) {
                 if !paths.is_empty() {
+                    // 連携元の正規パスを許可リストへ（grant_user_path が保護パスを拒否）
+                    let _ = security::grant_user_paths(&paths);
                     return Some(paths);
                 }
             }
@@ -210,9 +242,9 @@ fn init_thread_pool() {
         .num_threads(num_threads)
         .build_global()
     {
-        eprintln!("スレッドプール初期化エラー: {}", e);
+        dlog!("スレッドプール初期化エラー: {}", e);
     } else {
-        println!("並列処理: {}スレッドで初期化", num_threads);
+        dlog!("並列処理: {}スレッドで初期化", num_threads);
     }
 }
 
@@ -228,10 +260,7 @@ pub struct ProgressPayload {
 /// フォルダ内の画像ファイル一覧を取得
 #[tauri::command]
 async fn get_image_files(folder_path: String) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&folder_path);
-    if !path.exists() {
-        return Err("フォルダが存在しません".to_string());
-    }
+    let path = security::ensure_directory_read_path(&folder_path)?;
 
     // フォルダ切り替え時にPSDキャッシュをクリア
     processor::clear_psd_cache();
@@ -264,10 +293,7 @@ async fn get_image_files(folder_path: String) -> Result<Vec<String>, String> {
 /// フォルダ内の画像ファイル一覧を再帰的に取得（サブフォルダ対応）
 #[tauri::command]
 async fn get_image_files_recursive(folder_path: String) -> Result<Vec<FileEntry>, String> {
-    let base_path = PathBuf::from(&folder_path);
-    if !base_path.exists() {
-        return Err("フォルダが存在しません".to_string());
-    }
+    let base_path = security::ensure_directory_read_path(&folder_path)?;
 
     // フォルダ切り替え時にPSDキャッシュをクリア
     processor::clear_psd_cache();
@@ -332,6 +358,7 @@ async fn clear_psd_cache() {
 /// 画像のプレビューを取得（Base64）
 #[tauri::command]
 async fn get_image_preview(file_path: String, max_size: u32) -> Result<ImageInfo, String> {
+    let file_path = security::ensure_read_path(&file_path)?.to_string_lossy().to_string();
     processor::get_image_preview(&file_path, max_size)
 }
 
@@ -345,6 +372,9 @@ async fn get_image_preview_as_file(
 ) -> Result<PreviewFileInfo, String> {
     // 進捗通知: 読み込み開始
     let _ = app_handle.emit("preview_progress", "reading");
+
+    // 入力ファイルを許可リストで検証
+    let file_path = security::ensure_read_path(&file_path)?.to_string_lossy().to_string();
 
     // 一時ディレクトリを取得
     let temp_dir = std::env::temp_dir().join("tachimi_preview");
@@ -365,7 +395,7 @@ async fn get_image_preview_as_file(
 #[tauri::command]
 async fn cancel_processing() -> Result<(), String> {
     CANCEL_FLAG.store(true, Ordering::SeqCst);
-    println!("処理キャンセルが要求されました");
+    dlog!("処理キャンセルが要求されました");
     Ok(())
 }
 
@@ -389,10 +419,9 @@ async fn process_images(
         return Err("処理するファイルが選択されていません".to_string());
     }
 
-    let input_path = PathBuf::from(&input_folder);
-    if !input_path.exists() {
-        return Err(format!("入力フォルダが存在しません: {}", input_folder));
-    }
+    // 許可リスト検証（入力フォルダ=読み取り / 出力フォルダ=書き込み）
+    let input_path = security::ensure_directory_read_path(&input_folder)?;
+    security::ensure_write_path(&output_folder)?;
 
     let base_output_path = PathBuf::from(&output_folder);
 
@@ -538,7 +567,7 @@ async fn process_images(
 
     // Mutexからエラーリストを取得（poisonedの場合は空リストを返す）
     let error_list = errors.into_inner().unwrap_or_else(|poisoned| {
-        eprintln!("エラーリストのMutexがpoisoned状態です");
+        dlog!("エラーリストのMutexがpoisoned状態です");
         poisoned.into_inner()
     });
 
@@ -559,6 +588,9 @@ async fn generate_pdf(
     files: Vec<String>,
     options: processor::PdfOptions,
 ) -> Result<String, String> {
+    // 許可リスト検証（入力=読み取り / 出力=書き込み）
+    security::ensure_directory_read_path(&input_folder)?;
+    security::ensure_write_path(&output_path)?;
     // PDF生成前にPSDキャッシュを解放してメモリを確保
     processor::clear_psd_cache();
     processor::generate_pdf(&app_handle, &input_folder, &output_path, &files, &options)
@@ -585,10 +617,18 @@ async fn get_default_output_folder() -> Result<String, String> {
 /// フォルダを削除（中身ごと）
 #[tauri::command]
 async fn delete_folder(path: String) -> Result<(), String> {
-    let folder_path = PathBuf::from(&path);
-    if folder_path.exists() {
-        std::fs::remove_dir_all(&folder_path)
-            .map_err(|e| format!("フォルダの削除に失敗: {}", e))?;
+    // 許可リスト検証 ＋ 用途限定（PDF生成用の一時フォルダ _temp_pdf_source 専用）
+    let validated = security::ensure_write_path(&path)?;
+    let is_temp_source = validated
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n == "_temp_pdf_source")
+        .unwrap_or(false);
+    if !is_temp_source {
+        return Err("削除はPDF一時フォルダのみ許可されています".to_string());
+    }
+    if validated.exists() {
+        std::fs::remove_dir_all(&validated).map_err(|_| "フォルダの削除に失敗".to_string())?;
     }
     Ok(())
 }
@@ -602,10 +642,7 @@ pub struct FolderContents {
 
 #[tauri::command]
 async fn list_folder_contents(folder_path: String) -> Result<FolderContents, String> {
-    let path = PathBuf::from(&folder_path);
-    if !path.exists() {
-        return Err(format!("フォルダが存在しません: {}", folder_path));
-    }
+    let path = security::ensure_directory_read_path(&folder_path)?;
 
     let mut folders: Vec<String> = Vec::new();
     let mut json_files: Vec<String> = Vec::new();
@@ -659,12 +696,8 @@ async fn search_json_folders(
     base_path: String,
     query: String,
 ) -> Result<Vec<SearchResult>, String> {
-    println!("検索開始: base_path={}, query={}", base_path, query);
-    let path = PathBuf::from(&base_path);
-    if !path.exists() {
-        println!("フォルダが存在しません: {}", base_path);
-        return Err(format!("フォルダが存在しません: {}", base_path));
-    }
+    dlog!("検索開始: base_path={}, query={}", base_path, query);
+    let path = security::ensure_directory_read_path(&base_path)?;
 
     let query_lower = query.to_lowercase();
     let mut results: Vec<SearchResult> = Vec::new();
@@ -696,7 +729,7 @@ async fn search_json_folders(
                                 .map(|n| n.to_string_lossy().to_string())
                                 .unwrap_or_default();
 
-                            println!("マッチ: {} / {}", label, title_str);
+                            dlog!("マッチ: {} / {}", label, title_str);
                             results.push(SearchResult {
                                 label,
                                 title: title_str,
@@ -711,7 +744,7 @@ async fn search_json_folders(
 
     // タイトルでソート
     results.sort_by(|a, b| a.title.cmp(&b.title));
-    println!(
+    dlog!(
         "検索完了: エントリ数={}, 結果数={}",
         entry_count,
         results.len()
@@ -722,10 +755,7 @@ async fn search_json_folders(
 /// JSONフォルダ内のJSONファイル一覧を取得（後方互換性のため維持）
 #[tauri::command]
 async fn list_json_files(folder_path: String) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&folder_path);
-    if !path.exists() {
-        return Err(format!("フォルダが存在しません: {}", folder_path));
-    }
+    let path = security::ensure_directory_read_path(&folder_path)?;
 
     let mut files: Vec<String> = Vec::new();
 
@@ -753,12 +783,16 @@ async fn list_json_files(folder_path: String) -> Result<Vec<String>, String> {
 /// フォルダを開く（Windowsエクスプローラー）
 #[tauri::command]
 async fn open_folder(path: String) -> Result<(), String> {
+    // 許可リスト検証（フォルダのみ・シェル非経由で直接 explorer 起動）
+    let path = security::ensure_directory_read_path(&path)?
+        .to_string_lossy()
+        .to_string();
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
             .arg(&path)
             .spawn()
-            .map_err(|e| format!("フォルダを開けませんでした: {}", e))?;
+            .map_err(|_| "フォルダを開けませんでした".to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
@@ -783,23 +817,23 @@ async fn save_json_file(path: String, content: String) -> Result<(), String> {
     use std::fs;
     use std::io::Write;
 
-    let file_path = PathBuf::from(&path);
+    // 許可リスト検証（書き込み）
+    let file_path = security::ensure_write_path(&path)?;
 
     // 親フォルダが存在しない場合は作成
     if let Some(parent) = file_path.parent() {
         if !parent.exists() {
-            fs::create_dir_all(parent).map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
+            fs::create_dir_all(parent).map_err(|_| "フォルダの作成に失敗".to_string())?;
         }
     }
 
     // UTF-8 BOMなしで保存
-    let mut file =
-        fs::File::create(&file_path).map_err(|e| format!("ファイルの作成に失敗: {}", e))?;
+    let mut file = fs::File::create(&file_path).map_err(|_| "ファイルの作成に失敗".to_string())?;
 
     file.write_all(content.as_bytes())
-        .map_err(|e| format!("ファイルの書き込みに失敗: {}", e))?;
+        .map_err(|_| "ファイルの書き込みに失敗".to_string())?;
 
-    println!("JSONファイル保存完了: {}", path);
+    dlog!("JSONファイル保存完了: {}", path);
     Ok(())
 }
 
@@ -808,13 +842,10 @@ async fn save_json_file(path: String, content: String) -> Result<(), String> {
 async fn read_json_file(path: String) -> Result<String, String> {
     use std::fs;
 
-    let file_path = PathBuf::from(&path);
+    // 許可リスト検証（読み取り）
+    let file_path = security::ensure_read_path(&path)?;
 
-    if !file_path.exists() {
-        return Err(format!("ファイルが存在しません: {}", path));
-    }
-
-    fs::read_to_string(&file_path).map_err(|e| format!("ファイルの読み込みに失敗: {}", e))
+    fs::read_to_string(&file_path).map_err(|_| "ファイルの読み込みに失敗".to_string())
 }
 
 /// フォルダが存在しない場合は作成
@@ -822,21 +853,24 @@ async fn read_json_file(path: String) -> Result<String, String> {
 async fn ensure_folder_exists(path: String) -> Result<(), String> {
     use std::fs;
 
-    let folder_path = PathBuf::from(&path);
+    // 許可リスト検証（作成＝書き込み）
+    let folder_path = security::ensure_write_path(&path)?;
 
     if !folder_path.exists() {
-        fs::create_dir_all(&folder_path).map_err(|e| format!("フォルダの作成に失敗: {}", e))?;
-        println!("フォルダ作成: {}", path);
+        fs::create_dir_all(&folder_path).map_err(|_| "フォルダの作成に失敗".to_string())?;
+        dlog!("フォルダ作成: {}", path);
     }
 
     Ok(())
 }
 
-/// ファイルが存在するか確認
+/// ファイルが存在するか確認（許可外は存在オラクルにせず一律 false）
 #[tauri::command]
 async fn file_exists(path: String) -> Result<bool, String> {
-    let file_path = PathBuf::from(&path);
-    Ok(file_path.exists())
+    match security::ensure_query_path(&path) {
+        Ok(p) => Ok(p.exists()),
+        Err(_) => Ok(false),
+    }
 }
 
 /// PSDファイルからガイド情報を取得
@@ -844,7 +878,8 @@ async fn file_exists(path: String) -> Result<bool, String> {
 async fn get_psd_guides(
     file_path: String,
 ) -> Result<Vec<processor::image_loader::PsdGuide>, String> {
-    let path = PathBuf::from(&file_path);
+    let path = security::ensure_read_path(&file_path)?;
+    psd_safety::guard_psd_file_size(&path)?;
     processor::image_loader::extract_psd_guides(&path)
 }
 
@@ -858,6 +893,85 @@ async fn preview_work_info(
     Ok(processor::pdf::common::compute_work_info_lines(
         &work_info, width, height,
     ))
+}
+
+// ---- secure ダイアログ（Rust側でピック→grant→パス返却。生 dialog プラグインは使わせない）----
+
+#[derive(Debug, Deserialize, Default)]
+struct PickOptions {
+    #[serde(default)]
+    directory: bool,
+    #[serde(default)]
+    multiple: bool,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    filter_name: Option<String>,
+    #[serde(default)]
+    filter_exts: Option<Vec<String>>,
+}
+
+fn build_file_dialog(
+    app: &tauri::AppHandle,
+    options: &PickOptions,
+) -> tauri_plugin_dialog::FileDialogBuilder<tauri::Wry> {
+    let mut builder = app.dialog().file();
+    if let Some(t) = &options.title {
+        builder = builder.set_title(t);
+    }
+    if let (Some(name), Some(exts)) = (&options.filter_name, &options.filter_exts) {
+        let refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
+        builder = builder.add_filter(name, &refs);
+    }
+    builder
+}
+
+/// フォルダ/ファイルを選択し、選択実体だけを許可リストへ付与してパスを返す。
+#[tauri::command]
+fn secure_open_dialog(app: tauri::AppHandle, options: PickOptions) -> Result<Vec<String>, String> {
+    let picked: Vec<tauri_plugin_dialog::FilePath> = if options.directory {
+        if options.multiple {
+            build_file_dialog(&app, &options).blocking_pick_folders().unwrap_or_default()
+        } else {
+            build_file_dialog(&app, &options).blocking_pick_folder().into_iter().collect()
+        }
+    } else if options.multiple {
+        build_file_dialog(&app, &options).blocking_pick_files().unwrap_or_default()
+    } else {
+        build_file_dialog(&app, &options).blocking_pick_file().into_iter().collect()
+    };
+    let mut out = Vec::new();
+    for fp in picked {
+        if let Ok(p) = fp.into_path() {
+            security::grant_user_path(&p)?;
+            out.push(p.to_string_lossy().to_string());
+        }
+    }
+    Ok(out)
+}
+
+/// 保存先を選択し、その親フォルダを許可リストへ付与してパスを返す。
+#[tauri::command]
+fn secure_save_dialog(
+    app: tauri::AppHandle,
+    options: PickOptions,
+) -> Result<Option<String>, String> {
+    match build_file_dialog(&app, &options).blocking_save_file() {
+        Some(fp) => {
+            let p = fp.into_path().map_err(|_| "パス取得失敗".to_string())?;
+            if let Some(parent) = p.parent() {
+                security::grant_user_path(parent)?;
+            }
+            Ok(Some(p.to_string_lossy().to_string()))
+        }
+        None => Ok(None),
+    }
+}
+
+/// メッセージダイアログ（パスを扱わないので検証不要）。
+#[tauri::command]
+fn secure_message(app: tauri::AppHandle, message: String) {
+    let _ = app.dialog().message(message).blocking_show();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -875,10 +989,18 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_window_event(|_window, event| {
+            // 実D&D で投入されたパスを Rust が直接許可リストへ（保護パスは拒否）
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                let _ = security::grant_user_paths(paths.iter());
+            }
+        })
         .setup(|app| {
+            // セキュリティ初期化（許可ルート・temp ACL）
+            security::init();
+            security::harden_temp_dir();
+
             let args: Vec<String> = std::env::args().collect();
 
             if let Some(pos) = args.iter().position(|a| a == "--pdf-job") {
@@ -942,6 +1064,19 @@ pub fn run() {
             file_exists,
             get_psd_guides,
             preview_work_info,
+            // secure_* ファイル操作（生 plugin-fs/shell の代替）
+            security::secure_read_dir,
+            security::secure_read_text_file,
+            security::secure_read_binary_file,
+            security::secure_stat,
+            security::secure_open_path,
+            // secure ダイアログ（Rust側ピック→grant）
+            secure_open_dialog,
+            secure_save_dialog,
+            secure_message,
+            // 脱git 自動更新（G:更新置き場・minisign検証）
+            updater_local::check_local_update,
+            updater_local::apply_local_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

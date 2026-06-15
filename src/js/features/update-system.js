@@ -1,9 +1,11 @@
 /**
- * update-system.js - アップデート機能
- * GitHub Releases + tauri-plugin-updater による自動更新
+ * update-system.js - アップデート機能（脱git / G:共有ドライブ方式）
+ * 実行時は共有フォルダ(更新置き場\Tachimi\)だけを見る。minisign 署名検証で偽更新を拒否。
+ * plugin-updater の check()/downloadAndInstall() は使わない（Rust の check_local_update / apply_local_update）。
  */
 
 import { $ } from '../utils/dom.js';
+import { invoke } from '../core/tauri-api.js';
 
 /**
  * アップデートを確認（手動）
@@ -17,37 +19,29 @@ export async function checkForUpdate() {
     resultEl.style.display = 'none';
 
     try {
-        if (window.__TAURI__?.updater) {
-            const { check } = window.__TAURI__.updater;
-            const update = await check();
+        const update = await invoke('check_local_update');
 
-            if (update) {
-                resultEl.className = 'update-result available';
-                resultEl.innerHTML = `
-                    <div><strong>新しいバージョンがあります: v${update.version}</strong></div>
-                    <div style="margin-top: 6px; font-size: 11px; color: var(--text3);">${update.body || ''}</div>
-                    <button id="btnInstallUpdate" class="btn-install-update">
-                        ダウンロードしてインストール
-                    </button>
-                `;
-                resultEl.style.display = 'block';
+        if (update) {
+            resultEl.className = 'update-result available';
+            resultEl.innerHTML = `
+                <div><strong>新しいバージョンがあります: v${update.version}</strong></div>
+                <button id="btnInstallUpdate" class="btn-install-update">
+                    今すぐ更新
+                </button>
+            `;
+            resultEl.style.display = 'block';
 
-                window._pendingUpdate = update;
-                $('btnInstallUpdate').onclick = () => installUpdate();
-            } else {
-                resultEl.className = 'update-result no-update';
-                resultEl.textContent = '最新バージョンです';
-                resultEl.style.display = 'block';
-            }
+            window._pendingUpdate = update;
+            $('btnInstallUpdate').onclick = () => installUpdate();
         } else {
-            resultEl.className = 'update-result error';
-            resultEl.textContent = 'アップデート機能は利用できません（開発モード）';
+            resultEl.className = 'update-result no-update';
+            resultEl.textContent = '最新バージョンです';
             resultEl.style.display = 'block';
         }
     } catch (error) {
         console.error('Update check failed:', error);
         resultEl.className = 'update-result error';
-        resultEl.textContent = `確認に失敗しました: ${error.message || error}`;
+        resultEl.textContent = `確認に失敗しました: ${error}`;
         resultEl.style.display = 'block';
     } finally {
         btn.disabled = false;
@@ -56,34 +50,27 @@ export async function checkForUpdate() {
 }
 
 /**
- * 起動時の自動アップデートチェック
+ * 起動時の自動アップデートチェック（G:/参照アドレスの読込が間に合わないことがあるためリトライ）
  */
 export async function checkForUpdateOnStartup() {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    try {
-        if (!window.__TAURI__?.updater) {
-            console.log('Updater not available (dev mode)');
-            return;
-        }
-
-        const { check } = window.__TAURI__.updater;
-        const update = await check();
-
-        if (update) {
-            console.log(`Update available: v${update.version}`);
-            window._pendingUpdate = update;
-
-            const shouldUpdate = await showUpdateConfirmDialog(update.version);
-            if (shouldUpdate) {
-                await performAutoUpdate();
+    for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 4000));
+        try {
+            const update = await invoke('check_local_update');
+            if (update) {
+                console.log(`Update available: v${update.version}`);
+                window._pendingUpdate = update;
+                const shouldUpdate = await showUpdateConfirmDialog(update.version);
+                if (shouldUpdate) {
+                    await performAutoUpdate();
+                }
+                return;
             }
-        } else {
-            console.log('App is up to date');
+        } catch (error) {
+            console.warn('起動時更新チェック失敗(再試行):', error);
         }
-    } catch (error) {
-        console.error('Startup update check failed:', error);
     }
+    console.log('App is up to date (or 更新置き場 未接続)');
 }
 
 /**
@@ -129,7 +116,7 @@ export async function showUpdateConfirmDialog(version) {
 }
 
 /**
- * 自動アップデートを実行
+ * 自動アップデートを実行（サイレント更新 → アプリは自動終了・再起動）
  */
 export async function performAutoUpdate() {
     if (!window._pendingUpdate) return;
@@ -144,28 +131,19 @@ export async function performAutoUpdate() {
                 </svg>
             </div>
             <h3>アップデート中...</h3>
-            <p>ダウンロードしています。<br>しばらくお待ちください。</p>
+            <p>更新を適用しています。<br>自動で再起動します。</p>
         </div>
     `;
     document.body.appendChild(overlay);
 
     try {
-        await window._pendingUpdate.downloadAndInstall();
-
-        overlay.querySelector('h3').textContent = 'インストール完了';
-        overlay.querySelector('p').textContent = 'アプリを再起動します...';
-        overlay.querySelector('.update-dialog-icon').classList.remove('updating');
-
-        if (window.__TAURI__?.process) {
-            const { relaunch } = window.__TAURI__.process;
-            setTimeout(async () => {
-                await relaunch();
-            }, 1500);
-        }
+        // apply_local_update が再検証→サイレント更新(/S /R /UPDATE)を起動しアプリ終了。
+        await invoke('apply_local_update', { setupPath: window._pendingUpdate.setup_path });
+        // 通常はここに到達しない（app.exit）
     } catch (error) {
         console.error('Auto update failed:', error);
         overlay.querySelector('h3').textContent = 'アップデート失敗';
-        overlay.querySelector('p').textContent = error.message || 'エラーが発生しました';
+        overlay.querySelector('p').textContent = `${error}`;
         overlay.querySelector('.update-dialog-icon').classList.remove('updating');
 
         const btnClose = document.createElement('button');
@@ -180,7 +158,7 @@ export async function performAutoUpdate() {
 }
 
 /**
- * アップデートをインストール
+ * アップデートをインストール（手動）
  */
 export async function installUpdate() {
     const resultEl = $('updateResult');
@@ -194,29 +172,18 @@ export async function installUpdate() {
     try {
         if (installBtn) {
             installBtn.disabled = true;
-            installBtn.textContent = 'ダウンロード中...';
+            installBtn.textContent = '更新中...';
         }
 
-        await window._pendingUpdate.downloadAndInstall();
-
-        resultEl.innerHTML = `
-            <div><strong>インストール完了</strong></div>
-            <div style="margin-top: 6px;">アプリを再起動してください</div>
-        `;
-
-        if (window.__TAURI__?.process) {
-            const { relaunch } = window.__TAURI__.process;
-            setTimeout(async () => {
-                await relaunch();
-            }, 1500);
-        }
+        await invoke('apply_local_update', { setupPath: window._pendingUpdate.setup_path });
+        // 通常はここに到達しない（app.exit）
     } catch (error) {
         console.error('Update install failed:', error);
         resultEl.className = 'update-result error';
-        resultEl.textContent = `インストールに失敗しました: ${error.message || error}`;
+        resultEl.textContent = `更新に失敗しました: ${error}`;
         if (installBtn) {
             installBtn.disabled = false;
-            installBtn.textContent = 'ダウンロードしてインストール';
+            installBtn.textContent = '今すぐ更新';
         }
     }
 }
@@ -239,8 +206,6 @@ export async function updateVersionDisplay() {
             if (versionInfoEl) {
                 versionInfoEl.textContent = `Tachimi Standalone ${versionText}`;
             }
-
-            console.log('バージョン表示を更新:', versionText);
         }
     } catch (e) {
         console.warn('バージョン取得に失敗:', e);

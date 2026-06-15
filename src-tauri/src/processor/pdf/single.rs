@@ -114,7 +114,7 @@ pub fn generate_single_pdf(
             match create_pdf_image_from_jpeg_file(&file_path) {
                 Some((img, w, h)) => (img, w, h),
                 None => {
-                    eprintln!("PDF生成: JPEGファイル読み込みエラー: {}", filename);
+                    crate::dlog!("PDF生成: JPEGファイル読み込みエラー: {}", filename);
                     continue;
                 }
             }
@@ -122,7 +122,7 @@ pub fn generate_single_pdf(
             let img = match load_image(&file_path) {
                 Ok(img) => img,
                 Err(e) => {
-                    eprintln!("PDF生成: 画像読み込みエラー ({}): {}", filename, e);
+                    crate::dlog!("PDF生成: 画像読み込みエラー ({}): {}", filename, e);
                     continue;
                 }
             };
@@ -130,7 +130,7 @@ pub fn generate_single_pdf(
             match create_pdf_image(&img) {
                 Some(pdf_img) => (pdf_img, w, h),
                 None => {
-                    eprintln!("PDF生成: PDF画像変換エラー: {}", filename);
+                    crate::dlog!("PDF生成: PDF画像変換エラー: {}", filename);
                     continue;
                 }
             }

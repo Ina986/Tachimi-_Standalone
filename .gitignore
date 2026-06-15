@@ -29,3 +29,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# 内部リリース手順（公開しない・ローカル参照用）
+更新方法とリリース手順.md

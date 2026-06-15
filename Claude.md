@@ -567,3 +567,23 @@ F1. **巻数と著者の重なりを解消**: 著者ブロックの上端をタ�
 ### バージョン同期
 
 `src-tauri/Cargo.toml` / `src-tauri/Cargo.lock` / `src-tauri/tauri.conf.json` を **`1.2.24`** に更新。
+
+---
+
+## 最新状態（2026-06-15: セキュリティ強化＋自動更新の脱GitHub・App_installer統一）
+
+### セキュリティ強化（COMIC-Bridge手順書 横展開）
+- capability 最小化（生 plugin-fs 不付与）、CSP 厳格化（`script-src 'self'`/`object-src 'none'`/`base-uri`/`form-action`）、assetProtocol scope を `$TEMP/tachimi_preview/**` に限定。
+- Rust パス検証（`security.rs`: 許可リスト + canonicalize + 保護パス拒否）を全ファイルコマンドで通す。
+- `psd_safety.rs`（8BPS マジック+寸法/画素サニティ+サイズ上限）、`dlog!`（release時ログ抑止）、temp ACL 強化。
+
+### 自動更新（脱GitHub・minisign・App_installer）
+- 実行時 GitHub 非接続。**`G:\…\DTP制作部\App_installer\Tachimi\`** を見て、現行より高い版を minisign 検証して適用（`src-tauri/src/updater_local.rs`）。
+- 検証鍵は `updater_local.rs` の `UPDATER_PUBKEY`（= 運用フォルダ `_署名鍵\Tachimi\` の新鍵 `tachimi-updater.key.pub`）。秘密鍵は運用フォルダのみ。
+- `security.rs` の `BUSINESS_PATHS` に App_installer を登録（更新先を許可リスト経由で読むため）。
+- 旧 GitHub updater プラグインは残置（endpoints/pubkey は旧 GitHub 用）だが、実更新は `updater_local` が担う。
+
+### 2段階移行（現フリート→新方式）
+- 現フリート(v1.2.24)は GitHub 更新。移行版 **vMig=1.2.25** を GitHub に**元鍵CIリリース**して各端末を移行→以後 `App_installer\Tachimi\` を見る。
+- その後 **vG=1.2.26** を `App_installer\Tachimi\` に配置→移行済み端末が取得。以降は App_installer に置くだけ。
+- 詳細・全体手順: 運用フォルダ `_更新方法とリリース手順.md`。

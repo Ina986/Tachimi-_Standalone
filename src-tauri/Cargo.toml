@@ -1,6 +1,6 @@
 [package]
 name = "tachimi"
-version = "1.2.24"
+version = "1.2.25"
 description = "漫画原稿一括処理アプリ - タチミ"
 authors = ["Tachimi"]
 license = "MIT"
@@ -16,12 +16,14 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Tauri
-tauri = { version = "2", features = ["protocol-asset", "devtools"] }
+# Tauri（devtools は本番ビルドで開発者ツールを開かせないため無効）
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
+
+# Security（脱github updater署名検証 / 既定アプリ起動=cmd非経由）
+minisign-verify = "0.2"
+opener = "0.7"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

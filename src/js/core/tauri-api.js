@@ -43,30 +43,8 @@ function initTauriAPIs() {
         _listen = window.__TAURI__.event.listen;
     }
 
-    // ダイアログプラグイン
-    if (window.__TAURI__.dialog) {
-        _openDialog = window.__TAURI__.dialog.open;
-        _messageDialog = window.__TAURI__.dialog.message;
-        console.log('Dialog API loaded');
-    } else {
-        console.warn('Dialog API not found');
-    }
-
-    // シェルプラグイン
-    if (window.__TAURI__.shell) {
-        _openPath = window.__TAURI__.shell.open;
-    }
-
-    // FSプラグイン
-    if (window.__TAURI__.fs) {
-        _readTextFile = window.__TAURI__.fs.readTextFile;
-        _statFile = window.__TAURI__.fs.stat;
-    }
-
-    // Pathプラグイン
-    if (window.__TAURI__.path) {
-        _desktopDir = window.__TAURI__.path.desktopDir;
-    }
+    // セキュリティ強化: 生の dialog/shell/fs/path プラグインは使わない。
+    // ファイル操作・ダイアログは全て Rust の secure_* コマンド（許可リスト検証付き）経由にする。
 
     _initialized = true;
 
@@ -138,11 +116,20 @@ async function listen(event, handler) {
  * @returns {Promise<string|string[]|null>}
  */
 async function openDialog(options = {}) {
-    if (!_openDialog) {
-        await waitForInit();
-        if (!_openDialog) throw new Error('dialog API not available');
-    }
-    return _openDialog(options);
+    // Rust の secure_open_dialog（許可リスト検証＋選択実体のみ許可）へ委譲
+    const filter = Array.isArray(options.filters) && options.filters[0] ? options.filters[0] : null;
+    const picked = await invoke('secure_open_dialog', {
+        options: {
+            directory: !!options.directory,
+            multiple: !!options.multiple,
+            title: options.title || null,
+            filter_name: filter ? filter.name : null,
+            filter_exts: filter ? filter.extensions : null
+        }
+    });
+    const list = Array.isArray(picked) ? picked : [];
+    if (options.multiple) return list;
+    return list.length > 0 ? list[0] : null;
 }
 
 /**
@@ -152,12 +139,12 @@ async function openDialog(options = {}) {
  * @returns {Promise<void>}
  */
 async function showMessage(message, options = {}) {
-    if (!_messageDialog) {
+    try {
+        await invoke('secure_message', { message: String(message) });
+    } catch (e) {
         // フォールバック: ブラウザのalert
         alert(message);
-        return;
     }
-    return _messageDialog(message, options);
 }
 
 /**
@@ -166,11 +153,7 @@ async function showMessage(message, options = {}) {
  * @returns {Promise<void>}
  */
 async function openPath(path) {
-    if (!_openPath) {
-        console.warn('shell.open not available');
-        return;
-    }
-    return _openPath(path);
+    return invoke('secure_open_path', { path });
 }
 
 /**
@@ -179,10 +162,7 @@ async function openPath(path) {
  * @returns {Promise<string>}
  */
 async function readTextFile(path) {
-    if (!_readTextFile) {
-        throw new Error('fs.readTextFile not available');
-    }
-    return _readTextFile(path);
+    return invoke('secure_read_text_file', { filePath: path });
 }
 
 /**
@@ -191,10 +171,9 @@ async function readTextFile(path) {
  * @returns {Promise<Object>}
  */
 async function statFile(path) {
-    if (!_statFile) {
-        throw new Error('fs.stat not available');
-    }
-    return _statFile(path);
+    // secure_stat → { is_file, is_directory, size }。.size 互換のためエイリアス付与
+    const m = await invoke('secure_stat', { path });
+    return { ...m, isFile: m.is_file, isDirectory: m.is_directory };
 }
 
 /**
@@ -202,10 +181,8 @@ async function statFile(path) {
  * @returns {Promise<string>}
  */
 async function getDesktopDir() {
-    if (!_desktopDir) {
-        throw new Error('path.desktopDir not available');
-    }
-    return _desktopDir();
+    // path プラグインは封鎖。デスクトップ既定出力は get_default_output_folder を使う。
+    return null;
 }
 
 // === タチミ固有のAPIラッパー ===

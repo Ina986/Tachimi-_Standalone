@@ -1,13 +1,14 @@
 {
   "name": "tachimi-standalone",
   "productName": "タチミ",
-  "version": "1.0.0",
+  "version": "1.2.25",
   "description": "漫画原稿一括処理アプリ - Photoshop不要",
   "scripts": {
     "tauri": "tauri",
     "start": "tauri dev",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "check:security": "node scripts/check-security-regression.mjs"
   },
   "author": "Tachimi",
   "license": "MIT",

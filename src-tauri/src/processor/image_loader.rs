@@ -34,6 +34,17 @@ pub fn load_image(path: &Path) -> Result<DynamicImage, String> {
 /// PSDファイルを高速読み込み
 /// まずフラット化画像を試し、失敗したらレイヤー合成にフォールバック
 pub fn load_psd_fast(path: &Path) -> Result<DynamicImage, String> {
+    // PSD入口ガード（巨大ファイル/細工された寸法をパース前に弾く）
+    crate::psd_safety::guard_psd_file_size(path)?;
+    {
+        use std::io::Read;
+        if let Ok(mut f) = std::fs::File::open(path) {
+            let mut head = [0u8; 26];
+            if f.read_exact(&mut head).is_ok() {
+                crate::psd_safety::validate_psd_header(&head)?;
+            }
+        }
+    }
     match load_psd_composite(path) {
         Ok(img) => Ok(img),
         Err(_) => {

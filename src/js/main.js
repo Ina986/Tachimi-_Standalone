@@ -88,20 +88,14 @@ function initTauriAPIs() {
         if (window.__TAURI__.event) {
             appState.listen = window.__TAURI__.event.listen;
         }
-        if (window.__TAURI__.dialog) {
-            appState.openDialog = window.__TAURI__.dialog.open;
-            appState.messageDialog = window.__TAURI__.dialog.message;
-        }
-        if (window.__TAURI__.shell) {
-            appState.openPath = window.__TAURI__.shell.open;
-        }
-        if (window.__TAURI__.fs) {
-            appState.readTextFile = window.__TAURI__.fs.readTextFile;
-            appState.statFile = window.__TAURI__.fs.stat;
-        }
-        if (window.__TAURI__.path) {
-            appState.desktopDir = window.__TAURI__.path.desktopDir;
-        }
+        // セキュリティ強化: 生の dialog/shell/fs/path は使わず、
+        // 許可リスト検証付きの secure_* コマンドを呼ぶ tauri-api.js ラッパーへ委譲する。
+        appState.openDialog = tauriApi.openDialog;
+        appState.messageDialog = tauriApi.showMessage;
+        appState.openPath = tauriApi.openPath;
+        appState.readTextFile = tauriApi.readTextFile;
+        appState.statFile = tauriApi.statFile;
+        appState.desktopDir = tauriApi.getDesktopDir;
         console.log('Tauri APIs initialized on appState');
     } else {
         console.error('Tauri API not found!');
